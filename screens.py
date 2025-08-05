@@ -794,6 +794,8 @@ class LocalMapCanvas(Canvas):
 		self.game = game
 		player = self.player = game.player
 		
+		self.loaded_chunks = {}
+		
 		self.tile_num = 25
 		self.min_tiles = 11
 		self.max_tiles = 51
@@ -846,6 +848,8 @@ class LocalMapCanvas(Canvas):
 		
 		half = self.tile_num // 2
 		
+		region_size = self.region_terra.map_size
+		
 		self.delete("map")
 		
 		for row in range(self.tile_num):
@@ -853,7 +857,11 @@ class LocalMapCanvas(Canvas):
 				local_x = player.lx - half + col
 				local_y = player.ly - half + row
 				
-				color = self.region_terra.tile_color(local_x, local_y)
+				if 0 <= local_x < region_size and 0 <= local_y < region_size:
+					color = self.region_terra.tile_color(local_x, local_y)
+					
+				else:
+					color = "black"
 				
 				x0 = col * tile_width
 				y0 = row * tile_height

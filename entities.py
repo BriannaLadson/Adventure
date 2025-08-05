@@ -55,6 +55,15 @@ class Game:
 		entity.gx = random.randint(0, map_size - 1)
 		entity.gy = random.randint(0, map_size - 1)
 		
+	def get_or_generate_chunk(self, gx, gy, lz):
+		if (gx, gy) not in self.local_maps:
+			self.local_maps[(gx, gy)] = {}
+			
+		if lz not in self.local_maps[(gx, gy)]:
+			self.local_maps[(gx, gy)][lz] = self.generate_chunk(gx, gy, lz)
+			
+		return self.local_maps[(gx, gy)][lz]
+		
 	def move_entity(self, entity, dir):
 		if entity.lx == None and entity.ly == None:
 			self.move_entity_region(entity, dir)
