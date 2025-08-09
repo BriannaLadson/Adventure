@@ -1,0 +1,14 @@
+Copyright (c) 2025 Brianna Ladson
+
+Permission is granted to the purchaser to use this software for personal or commercial purposes, including modification for use in your own projects.
+
+However, redistribution, resale, or sharing of this software, in whole or in part, with or without modification, is strictly prohibited without explicit written permission from the author.
+
+This license applies only to the original TerraForgePro files. Third-party dependencies used in this software retain their own licenses, included separately in the `licenses/` directory.
+
+This software is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and noninfringement. In no event shall the author be liable for any claim, damages, or other liability arising from the use of this software.
+
+Dependencies are licensed as follows:
+noise – MIT License (licenses/noise_LICENSE.txt)
+numpy – BSD 3-Clause (licenses/numpy_LICENSE.txt)
+Pillow – MIT-CMU License (licenses/pillow_LICENSE.txt)
