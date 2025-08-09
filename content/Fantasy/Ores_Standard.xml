@@ -1,0 +1,12 @@
+<OreDeposits>
+	<Ore_Deposit>
+		<ID>CoalDeposit</ID>
+		<Name>Coal Deposit</Name>
+		<Color>#2B2B2B</Color>
+	</Ore_Deposit>
+	<Ore_Deposit>
+		<ID>CopperDeposit</ID>
+		<Name>Copper Deposit</Name>
+		<Color>#B87333</Color>
+	</Ore_Deposit>
+</OreDeposits>

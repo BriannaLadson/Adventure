@@ -267,6 +267,8 @@ class WorldGenerationScreen(Screen):
 		self.overworld_notebook.add(fr, text="Biomes")
 			
 	def load_region_general_tab(self):
+		game = self.game
+		
 		fr = ttk.Frame()
 		
 		#Region Size
@@ -310,16 +312,11 @@ class WorldGenerationScreen(Screen):
 	def load_region_noise_types(self):
 		game = self.game
 		
-		#filters = ["Biome",]
-		
 		for noise_type in game.region_noise_types:
 			tab = NoiseTypeTab(self.region_notebook, noise_type)
 			
 			self.region_notebook.add(tab, text=noise_type.name)
-			
-			#filters.append(noise_type.name)
-			
-		#self.filter_cbx["values"] = filters
+
 			
 	def start_generate(self):
 		self.generate_btn.config(state="disabled")
@@ -794,11 +791,21 @@ class LocalMapCanvas(Canvas):
 		self.game = game
 		player = self.player = game.player
 		
-		self.loaded_chunks = {}
+		self.region_map = None
 		
 		self.tile_num = 25
 		self.min_tiles = 11
 		self.max_tiles = 51
+		
+		self.structures_map = []
+		map_size = game.world_settings["region_size"]
+		for y in range(map_size):
+			y_array = []
+			
+			for x in range(map_size):
+				y_array.append(None)
+				
+			self.structures_map.append(y_array)
 		
 		threading.Thread(target=self.generate).start()
 		
@@ -806,17 +813,32 @@ class LocalMapCanvas(Canvas):
 		game = self.game
 		player = self.player
 		
+		world_size = game.world_settings["map_size"]
+		
+		self.seed = player.gy * world_size + player.gx + 1
+		
 		popup = GeneratePopup(self.root)
 		popup.center()
+		
+		self.generate_terrain()
+		self.generate_ore()
+		
+		popup.destroy()
+		
+		self.bind("<Configure>", self.draw_map)
+		self.draw_map()
+		
+	def generate_terrain(self):
+		game = self.game
+		player = self.player
 		
 		region_color = game.terra.tile_color(player.gx, player.gy)
 		region_biome = helpf.get_obj_by_attr_val(game.biomes, "color", region_color)
 		
 		noise_types = game.world_settings["region_noise_types"]
 		for noise_type in noise_types.values():
-			#noise_type["seed"] = hash((player.gx, player.gy)) % (2**32)
 			world_size = game.world_settings["map_size"]
-			noise_type["seed"] = player.gy * world_size + player.gx + 1
+			noise_type["seed"] = self.seed
 		
 		self.region_terra = TerraForgePro(
 			noise_types = game.world_settings["region_noise_types"],
@@ -829,10 +851,29 @@ class LocalMapCanvas(Canvas):
 		
 		self.region_terra.generate_noise()
 		
-		popup.destroy()
+	def generate_ore(self):
+		game = self.game
+		player = self.player
 		
-		self.bind("<Configure>", self.draw_map)
-		self.draw_map()
+		rng = random.Random(self.seed)
+		
+		ore_deposit = rng.choice(game.ore_deposits)
+		
+		map_size = game.world_settings["region_size"]
+		
+		deposit_x = rng.randint(0, map_size - 1)
+		deposit_y = rng.randint(0, map_size - 1)
+		
+		ore_deposit_structure = entities.OreDepositStructure(
+			player.gx,
+			player.gy,
+			deposit_x,
+			deposit_y,
+			0,
+			ore_deposit,
+		)
+		
+		self.structures_map[deposit_y][deposit_x] = ore_deposit_structure
 		
 	def draw_map(self, event=None):
 		game = self.game
@@ -869,13 +910,23 @@ class LocalMapCanvas(Canvas):
 				x1 = x0 + tile_width
 				y1 = y0 + tile_height
 				
-				self.create_rectangle(
+				tile = self.create_rectangle(
 					x0, y0,
 					x1, y1,
 					fill=color,
 					outline="black",
 					tags="map",
 				)
+				
+				#Draw Structure
+				h = len(self.structures_map)
+				w = len(self.structures_map[0]) if h else 0
+				
+				if 0 <= local_x < w and 0 <= local_y < h:
+					structure = self.structures_map[local_y][local_x]
+				
+					if not structure == None:
+						structure.draw(self, tile)
 				
 		ctx = half * tile_width
 		cty = half * tile_height

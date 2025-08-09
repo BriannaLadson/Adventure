@@ -27,6 +27,7 @@ class Game:
 		attrs = {
 			"biomes_dict": "biomes",
 			"noise_types_dict": "noise_types",
+			"ore_deposits_dict": "ore_deposits",
 			"region_noise_types_dict": "region_noise_types",
 			"tile_types_dict": "tile_types",
 		}
@@ -144,6 +145,39 @@ class Player(Entity):
 	def __init__(self):
 		super().__init__()
 		
+class Structure(Entity):
+	def __init__(self, gx, gy, lx, ly, lz):
+		super().__init__()
+			
+		self.gx = gx
+		self.gy = gy
+		
+		self.lx = lx
+		self.ly = ly
+		self.lz = lz
+		
+class OreDepositStructure(Structure):
+	def __init__(self, gx, gy, lx, ly, lz, ore_deposit_type):
+		super().__init__(gx, gy, lx, ly, lz)
+		
+		self.ore_deposit_type = ore_deposit_type
+		
+		self.color = ore_deposit_type.color
+		
+	def draw(self, canvas, tile):
+		x0, y0, x1, y1 = canvas.bbox(tile)
+		
+		inset = min(x1 - x0, y1 - y0) * .15
+		
+		canvas.create_oval(
+			x0 + inset, y0 + inset,
+			x1 - inset, y1 - inset,
+			fill=self.color,
+			outline="black",
+			width=1,
+			tags="map",
+		)
+
 #XML
 class Biome:
 	def __init__(self, *args):
@@ -234,7 +268,15 @@ class NoiseType:
 		}
 		
 		return dict
+	
+class OreDepositType:
+	def __init__(self, *args):
+		self.id = args[0]
 		
+		self.name = args[1]
+		
+		self.color = args[2]
+	
 class TileType:
 	def __init__(self, *args):
 		self.id = args[0]
