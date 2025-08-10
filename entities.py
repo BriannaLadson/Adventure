@@ -21,6 +21,101 @@ class Game:
 		
 		self.local_maps = {}
 		
+		self.turns = 0
+		self.minute = 0
+		self.hour = 0
+		self.month = 1
+		self.day = 1
+		self.year = 1
+		
+		self.month_days = [
+			31,
+			28,
+			31,
+			30,
+			31,
+			30,
+			31,
+			31,
+			30,
+			31,
+			31,
+			31,
+		]
+		
+	def days_in_month(self, m=None):
+		m = self.month if m is None else m
+		
+		return self.month_days[m - 1]
+		
+	def advance_minutes(self, minutes: int):
+		if minutes == 0:
+			return
+			
+		self.minute += minutes
+		
+		dh, self.minute = divmod(self.minute, 60)
+		
+		if self.minute < 0:
+			dh -= 1
+			self.minute += 60
+			
+		self.advance_hours(dh)
+		
+	def advance_hours(self, hours: int):
+		if hours == 0:
+			return
+			
+		self.hour += hours
+		
+		dd, self.hour = divmod(self.hour, 24)
+		
+		if self.hour < 0:
+			dd -= 1
+			self.hour += 24
+			
+		self.advance_days(dd)
+		
+	def advance_days(self, days: int):
+		if days == 0:
+			return
+			
+		d = self.day + days
+		
+		#forward
+		while d > self.days_in_month(self.month):
+			d -= self.days_in_month(self.month)
+			self.month += 1
+			if self.month > 12:
+				self.month = 1
+				self.year += 1
+				
+		#backward
+		while d < 1:
+			self.month -= 1
+			if self.month < 1:
+				self.month = 12
+				self.year = max(1, self.year - 1)
+				
+			d += self.days_in_month(self.month)
+			
+		self.day = d
+		
+	def date_str(self):
+		return f"{self.month}/{self.day}/{self.year}"
+		
+	def time_str(self):
+		h24 = self.hour %24
+		
+		ampm = "AM" if h24 < 12 else "PM"
+		
+		h12 = h24 % 12
+		
+		if h12 == 0:
+			h12 = 12
+		
+		return f"{h12}:{self.minute:02d} {ampm}"
+		
 	def load_data(self):
 		path = self.save_path + "/content_data"
 		
@@ -92,12 +187,18 @@ class Game:
 				
 			entity.gx = tx
 			entity.gy = ty
+			
+			if isinstance(entity, Player):
+				self.turns = 60
 		
 		except KeyError:
 			if dir == "in":
 				entity.lx = self.world_settings["region_size"] // 2 - 1
 				entity.ly = entity.lx
 				entity.lz = 0
+				
+				if isinstance(entity, Player):
+					self.turns = 1
 				
 	def move_entity_tile(self, entity, dir):
 		map_size = self.world_settings["region_size"]
@@ -120,6 +221,9 @@ class Game:
 				
 			entity.lx = tx
 			entity.ly = ty
+			
+			if isinstance(entity, Player):
+				self.turns = 1
 			
 		except KeyError:
 			pass
@@ -162,21 +266,53 @@ class OreDepositStructure(Structure):
 		
 		self.ore_deposit_type = ore_deposit_type
 		
+		self.name = self.ore_deposit_type.name
+		
 		self.color = ore_deposit_type.color
 		
+		self.tile = None
+		
 	def draw(self, canvas, tile):
+		self.tile = tile
+		
 		x0, y0, x1, y1 = canvas.bbox(tile)
 		
 		inset = min(x1 - x0, y1 - y0) * .15
 		
-		canvas.create_oval(
+		item = canvas.create_oval(
 			x0 + inset, y0 + inset,
 			x1 - inset, y1 - inset,
 			fill=self.color,
 			outline="black",
-			width=1,
+			width=2,
 			tags="map",
 		)
+		
+		canvas.tag_bind(item, "<Enter>", lambda e, c=canvas: self.mouse_over(c))
+		canvas.tag_bind(item, "<Leave>", lambda e, c=canvas: self.mouse_leave(c))
+		
+	def mouse_over(self, canvas):
+		x0, y0, x1, y1 = canvas.bbox(self.tile)
+		
+		canvas.tile_highlight = canvas.create_rectangle(
+			x0, y0,
+			x1, y1,
+			outline="red",
+			width=2,
+			fill="",
+			tags=("map", "hover")
+		)
+		
+		canvas.hover_var.set(self.name)
+		
+	def mouse_leave(self, canvas):
+		try:
+			canvas.delete(canvas.tile_highlight)
+			
+			canvas.hover_var.set("")
+			
+		except AttributeError:
+			pass
 
 #XML
 class Biome:

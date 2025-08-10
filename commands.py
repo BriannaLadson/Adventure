@@ -1,6 +1,10 @@
+import turnsystem as turnsys
+
 def process_cmd(event, screen, cmd):
 	try:
 		cmd_dict[cmd](screen, cmd)
+		
+		turnsys.take_turn(screen.game, screen.game.turns)
 		
 		screen.update_screen()
 	

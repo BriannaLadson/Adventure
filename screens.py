@@ -500,11 +500,37 @@ class PlayScreen(Screen):
 		self.fast_travel_can = None
 		self.local_map_can = None
 		
-		#Location
-		self.location_var = StringVar(value=player.get_location())
+		#Info Frame
+		info_fr = ttk.Frame(self)
+		info_fr.pack(fill=X)
 		
-		location_lbl = ttk.Label(self, textvariable=self.location_var)
-		location_lbl.pack(fill=X)
+		#Time & Date
+		time_date_fr = ttk.Frame(info_fr)
+		time_date_fr.pack(side=LEFT, fill=X, expand=1)
+		
+		self.time_var = StringVar(value=f"Time: {game.time_str()}")
+		
+		time_lbl = ttk.Label(time_date_fr, textvariable=self.time_var, anchor="center")
+		time_lbl.pack()
+		
+		self.date_var = StringVar(value=f"Date: {game.date_str()}")
+		
+		date_lbl = ttk.Label(time_date_fr, textvariable=self.date_var)
+		date_lbl.pack()
+		
+		#Location
+		location_fr = ttk.Frame(info_fr)
+		location_fr.pack(side=LEFT, fill=X, expand=1)
+		
+		self.location_var = StringVar(value=f"Location: {player.get_location()}")
+		
+		location_lbl = ttk.Label(location_fr, textvariable=self.location_var, anchor="center")
+		location_lbl.pack()
+		
+		self.hover_var = StringVar()
+		
+		hover_lbl = ttk.Label(location_fr, textvariable=self.hover_var)
+		hover_lbl.pack()
 		
 		if player.lx is None:
 			self.fast_travel_can = FastTravelCanvas(self, game)
@@ -537,9 +563,13 @@ class PlayScreen(Screen):
 		root.bind("5", lambda e: commands.process_cmd(e, self, "in"))
 		
 	def update_screen(self):
+		game = self.game
 		player = self.player
 		
-		self.location_var.set(player.get_location())
+		self.time_var.set(f"Time: {game.time_str()}")
+		self.date_var.set(f"Date: {game.date_str()}")
+		
+		self.location_var.set(f"Location: {player.get_location()}")
 		
 		if player.lx is None:
 			self.remove_local_map()
@@ -568,7 +598,7 @@ class PlayScreen(Screen):
 		player = self.player
 		
 		if self.local_map_can is None:
-			self.local_map_can = LocalMapCanvas(self, self.game)
+			self.local_map_can = LocalMapCanvas(self, self.game, self.hover_var)
 			self.local_map_can.pack(fill=BOTH, expand=1)
 			
 		else:
@@ -784,12 +814,14 @@ class FastTravelCanvas(Canvas):
 		self.draw_map()
 		
 class LocalMapCanvas(Canvas):
-	def __init__(self, parent, game):
+	def __init__(self, parent, game, hover_var):
 		super().__init__(parent, bg="lightblue")
 		
 		self.root = parent.master
 		self.game = game
 		player = self.player = game.player
+		
+		self.hover_var = hover_var
 		
 		self.region_map = None
 		
@@ -826,6 +858,7 @@ class LocalMapCanvas(Canvas):
 		popup.destroy()
 		
 		self.bind("<Configure>", self.draw_map)
+		self.bind("<MouseWheel>", self.on_mousewheel)
 		self.draw_map()
 		
 	def generate_terrain(self):
@@ -916,6 +949,7 @@ class LocalMapCanvas(Canvas):
 					fill=color,
 					outline="black",
 					tags="map",
+					width=2,
 				)
 				
 				#Draw Structure
@@ -946,6 +980,26 @@ class LocalMapCanvas(Canvas):
 			outline="",
 			tags="map",
 		)
+		
+	def on_mousewheel(self, event):
+		game = self.game
+		map_size = game.world_settings["region_size"]
+		
+		if map_size < self.max_tiles:
+			cap = map_size + 1
+			
+		else:
+			cap = self.max_tiles
+		
+		if event.delta > 0 or getattr(event, "num", None) == 4:
+			if self.tile_num > self.min_tiles:
+				self.tile_num -= 2
+				
+		else:
+			if self.tile_num < cap:
+				self.tile_num += 2
+					
+		self.draw_map()
 
 class NoiseTypeTab(ttk.Frame):
 	def __init__(self, parent, noise_type):
