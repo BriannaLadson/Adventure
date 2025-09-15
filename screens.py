@@ -5,6 +5,7 @@ import os
 import random
 from terraforgepro import TerraForgePro
 import threading
+import time
 
 import helpfunctions as helpf
 import entities
@@ -307,7 +308,26 @@ class WorldGenerationScreen(Screen):
 		region_min_island_spacing_ent = ttk.Entry(fr, textvariable=self.region_min_island_spacing_var)
 		region_min_island_spacing_ent.grid(row=3, column=1)
 		
+		#Min Ore Deposits
+		region_min_ore_deposits_lbl = ttk.Label(fr, text="Minimum Ore Deposits")
+		region_min_ore_deposits_lbl.grid(row=4, column=0)
+		
+		self.region_min_ore_deposits_var = IntVar(value=1)
+		
+		region_min_ore_deposits_ent = ttk.Entry(fr, textvariable=self.region_min_ore_deposits_var)
+		region_min_ore_deposits_ent.grid(row=4, column=1)
+		
+		#Max Ore Deposits
+		region_max_ore_deposits_lbl = ttk.Label(fr, text="Maximum Ore Deposits")
+		region_max_ore_deposits_lbl.grid(row=5, column=0)
+		
+		self.region_max_ore_deposits_var = IntVar(value=4)
+		
+		region_max_ore_deposits_ent = ttk.Entry(fr, textvariable=self.region_max_ore_deposits_var)
+		region_max_ore_deposits_ent.grid(row=5, column=1)
+		
 		self.region_notebook.add(fr, text="General")
+		
 		
 	def load_region_noise_types(self):
 		game = self.game
@@ -434,6 +454,8 @@ class WorldGenerationScreen(Screen):
 			"region_island_spread": self.region_island_spread_var.get(),
 			"region_min_island_spacing": self.min_island_spacing_var.get(),
 			"region_noise_types": self.region_generator.noise_types,
+			"region_min_ore_deposits": self.region_min_ore_deposits_var.get(),
+			"region_max_ore_deposits": self.region_max_ore_deposits_var.get(),
 		}
 		
 		root.character_creation_screen = CharacterCreationScreen(root)
@@ -485,7 +507,10 @@ class PlayScreen(Screen):
 		super().__init__(root)
 		
 		game = self.game = helpf.get_data(root.save_path + "/game_data", "game")
+		game.play_screen = self
 		player = self.player = game.player
+		
+		self.update_map = True
 		
 		terra = game.terra = TerraForgePro(
 			noise_types = game.world_settings["noise_types"],
@@ -532,6 +557,19 @@ class PlayScreen(Screen):
 		hover_lbl = ttk.Label(location_fr, textvariable=self.hover_var)
 		hover_lbl.pack()
 		
+		#Action
+		action_fr = ttk.Frame(location_fr)
+		action_fr.pack()
+		
+		self.action_var = StringVar()
+		
+		action_lbl = ttk.Label(action_fr, textvariable=self.action_var, anchor="center")
+		action_lbl.pack(side=LEFT)
+		
+		self.action_bar = ActionBar(action_fr)
+		
+		self.action_btn = ttk.Button(action_fr, text="Stop", command=lambda:setattr(self.player, "busy", False))
+		
 		if player.lx is None:
 			self.fast_travel_can = FastTravelCanvas(self, game)
 			self.fast_travel_can.pack(fill=BOTH, expand=1)
@@ -562,6 +600,8 @@ class PlayScreen(Screen):
 		
 		root.bind("5", lambda e: commands.process_cmd(e, self, "in"))
 		
+		root.bind("i", lambda e: self.open_character_sheet(e, "Inventory"))
+		
 	def update_screen(self):
 		game = self.game
 		player = self.player
@@ -571,15 +611,20 @@ class PlayScreen(Screen):
 		
 		self.location_var.set(f"Location: {player.get_location()}")
 		
-		if player.lx is None:
-			self.remove_local_map()
-			
-			self.create_fast_travel_map()
-			
-		else:
-			self.remove_fast_travel_map()
-			
-			self.create_local_map()
+		self.action_bar.update_bar()
+		
+		if self.update_map:
+			if player.lx is None:
+				self.remove_local_map()
+				
+				self.create_fast_travel_map()
+				
+			else:
+				self.remove_fast_travel_map()
+				
+				self.create_local_map()
+				
+		self.update_map = True
 			
 	def create_fast_travel_map(self):
 		if self.fast_travel_can is None:
@@ -608,6 +653,34 @@ class PlayScreen(Screen):
 		if self.local_map_can is not None:
 			self.local_map_can.destroy()
 			self.local_map_can = None
+			
+	def start_action(self, action_str):
+		self.action_var.set(action_str)
+		
+		self.action_bar.pack(side=LEFT)
+		
+		self.action_btn.pack(side=LEFT)
+		
+		if not self.player.busy:
+			self.player.busy = True
+			
+			threading.Thread(target=self.do_action).start()
+		
+	def do_action(self):
+		while self.player.busy:
+			command = self.player.action_target.command
+			
+			self.update_map = False
+			
+			commands.process_cmd(None, self, command)
+			
+			time.sleep(1)
+		
+	def open_character_sheet(self, event, tab):
+		popup = CharacterSheetPopup(self.root, self.game, self.player)
+		popup.center()
+		
+		popup.select_tab_by_text(tab)
 		
 #Popups
 class Popup(Toplevel):
@@ -724,8 +797,97 @@ class OverwriteSavePopup(Popup):
 			root.content_screen.pack(fill=BOTH, expand=1)
 			
 		self.destroy()
+	
+class CharacterSheetPopup(Popup):
+	def __init__(self, root, game, player):
+		super().__init__(root)
 		
+		self.game = game
+		self.player = player
+		
+		self.notebook = ttk.Notebook(self)
+		self.notebook.pack(fill=BOTH, expand=1)
+		
+		back_btn = ttk.Button(self, text="Back", command=self.destroy)
+		back_btn.pack()
+		
+		self.init_tabs()
+		
+		self.center()
+		
+	def init_tabs(self):
+		self.init_inventory_tab()
+		self.init_skills_tab()
+		
+	def init_inventory_tab(self):
+		inventory_fr = ttk.Frame(self.notebook)
+		
+		inventory_scr_fr = ScrollableFr(inventory_fr)
+		inventory_scr_fr.pack(fill=BOTH, expand=1)
+		
+		for item_id in self.player.inventory:
+			item_type = helpf.get_obj_by_attr_val(self.game.item_types, "id", item_id)
+			
+			quantity = self.player.inventory[item_id]
+			
+			lbl = ttk.Label(inventory_scr_fr.fr1, text=f"{item_type.name}: {str(quantity)}")
+			lbl.pack()
+		
+		self.notebook.add(inventory_fr, text="Inventory")
+		
+	def init_skills_tab(self):
+		skills_fr = ttk.Frame(self.notebook)
+		
+		skills_scr_fr = ScrollableFr(skills_fr)
+		skills_scr_fr.pack(fill=BOTH, expand=1)
+		
+		for skill_key in self.player.skill_levels:
+			skill_level = self.player.skill_levels[skill_key]
+			
+			lbl = ttk.Label(skills_scr_fr.fr1, text=f"{skill_key.capitalize()}: {str(skill_level)}")
+			lbl.pack()
+		
+		self.notebook.add(skills_fr, text="Skills")
+		
+	def select_tab_by_text(self, text):
+		for tab_id in self.notebook.tabs():
+			if self.notebook.tab(tab_id, "text") == text:
+				self.notebook.select(tab_id)
+				
+				return True
+				
+		return False
+	
 #Widgets
+class ActionBar(Canvas):
+	def __init__(self, parent, width=100, height=13, bg="lightblue", cur=0, max=100, color="green"):
+		super().__init__(parent, width=width, height=height, bg=bg)
+		
+		self.cur = cur
+		self.max = max
+		self.color = color
+		
+		self.action_target = None
+		
+		self.update_bar()
+		
+	def update_bar(self):
+		self.delete("all")
+		
+		try:
+			self.min_progress = self.action_target.min_progress
+			self.max_progress = self.action_target.max_progress
+		
+			self.create_rectangle(
+				0, 0,
+				(self.min_progress / self.max_progress) * self.winfo_width(), self.winfo_height(),
+				fill=self.color,
+			)
+			
+		except AttributeError:
+			pass
+	
+
 class FastTravelCanvas(Canvas):
 	def __init__(self, parent, game):
 		super().__init__(parent, bg="lightblue")
@@ -888,25 +1050,29 @@ class LocalMapCanvas(Canvas):
 		game = self.game
 		player = self.player
 		
+		min_deposits = game.world_settings["region_min_ore_deposits"]
+		max_deposits = game.world_settings["region_max_ore_deposits"]
+		
 		rng = random.Random(self.seed)
-		
-		ore_deposit = rng.choice(game.ore_deposits)
-		
 		map_size = game.world_settings["region_size"]
 		
-		deposit_x = rng.randint(0, map_size - 1)
-		deposit_y = rng.randint(0, map_size - 1)
+		for i in range(min_deposits, max_deposits):
+			ore_deposit = rng.choice(game.ore_deposits)
+			
+			deposit_x = rng.randint(0, map_size - 1)
+			deposit_y = rng.randint(0, map_size - 1)
 		
-		ore_deposit_structure = entities.OreDepositStructure(
-			player.gx,
-			player.gy,
-			deposit_x,
-			deposit_y,
-			0,
-			ore_deposit,
-		)
-		
-		self.structures_map[deposit_y][deposit_x] = ore_deposit_structure
+			ore_deposit_structure = entities.OreDepositStructure(
+				game,
+				player.gx,
+				player.gy,
+				deposit_x,
+				deposit_y,
+				0,
+				ore_deposit,
+			)
+			
+			self.structures_map[deposit_y][deposit_x] = ore_deposit_structure
 		
 	def draw_map(self, event=None):
 		game = self.game

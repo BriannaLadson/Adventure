@@ -2,6 +2,7 @@ import random
 from terraforgepro import TerraForgePro
 
 import helpfunctions as helpf
+import commands
 
 class Game:
 	def __init__(self, save_path, content_path):
@@ -42,6 +43,8 @@ class Game:
 			31,
 			31,
 		]
+		
+		self.leveling_system = True # True = XP, False = Point
 		
 	def days_in_month(self, m=None):
 		m = self.month if m is None else m
@@ -121,6 +124,7 @@ class Game:
 		
 		attrs = {
 			"biomes_dict": "biomes",
+			"item_types_dict": "item_types",
 			"noise_types_dict": "noise_types",
 			"ore_deposits_dict": "ore_deposits",
 			"region_noise_types_dict": "region_noise_types",
@@ -238,6 +242,12 @@ class Entity:
 		self.ly = None
 		self.lz = None
 		
+		self.busy = False
+		
+		self.action_target = None
+		
+		self.inventory = {}
+		
 	def get_location(self):
 		if self.lx == None or self.ly == None or self.lz == None:
 			return f"{self.gx},{self.gy}"
@@ -245,9 +255,81 @@ class Entity:
 		else:
 			return f"{self.lx},{self.ly},{self.lz}"
 			
-class Player(Entity):
+	def in_range(self, target, tile_range: int, use_global=True) -> bool:
+		if use_global:
+			dx = self.gx - target.gx
+			dy = self.gy - target.gy
+			
+		else:
+			if self.lx is None or self.ly is None or target.lx is None or target.ly is None:
+				return false
+				
+			dx = self.lx - target.lx
+			dy = self.ly - target.ly
+			
+			return max(abs(dx), abs(dy)) <= tile_range
+			
+	def add_item(self, item, quantity=1):
+		self.inventory[item] = self.inventory.get(item, 0) + quantity
+			
+class Creature(Entity):
 	def __init__(self):
 		super().__init__()
+		
+		self.skill_levels = {
+			"mining": 1,
+		}
+		
+		self.skill_xps = {
+			"mining": 0,
+		}
+		
+		self.leveling = True
+		
+	def get_skill_progress(self, skill):
+		skill_level = self.skill_levels[skill]
+		
+		if skill_level <= 1:
+			return 1
+			
+		else:
+			return random.randint(1, skill_level)
+			
+	def check_skill_level(self, skill):
+		skill_level = self.skill_levels[skill]
+		
+		skill_xp = self.skill_xps[skill]
+		
+		max_xp = skill_level + 1 * 100
+		
+		level_mod = 0
+		xp_mod = skill_xp
+		
+		if skill_xp >= max_xp:
+			level_mod = skill_xp // max_xp
+			
+			xp_mod = skill_xp % max_xp
+			
+		self.skill_levels[skill] = skill_level + level_mod
+		self.skill_xps[skill] = xp_mod
+		
+	def mod_skill_xp(self, skill):
+		if self.leveling:
+			xp = self.get_skill_progress(skill)
+			
+			skill_xp = self.skill_xps[skill]
+			
+			skill_xp += xp
+			
+			self.skill_xps[skill] = skill_xp
+			
+			self.check_skill_level(skill)
+			
+class Player(Creature):
+	def __init__(self):
+		super().__init__()
+		
+		self.leveling = True		
 		
 class Structure(Entity):
 	def __init__(self, gx, gy, lx, ly, lz):
@@ -261,16 +343,25 @@ class Structure(Entity):
 		self.lz = lz
 		
 class OreDepositStructure(Structure):
-	def __init__(self, gx, gy, lx, ly, lz, ore_deposit_type):
+	def __init__(self, game, gx, gy, lx, ly, lz, ore_deposit_type):
 		super().__init__(gx, gy, lx, ly, lz)
 		
+		self.game = game
+		
 		self.ore_deposit_type = ore_deposit_type
+		
+		self.ore = ore_deposit_type.ore
 		
 		self.name = self.ore_deposit_type.name
 		
 		self.color = ore_deposit_type.color
 		
 		self.tile = None
+		
+		self.min_progress = 0
+		self.max_progress = 100
+		
+		self.command = "mine"
 		
 	def draw(self, canvas, tile):
 		self.tile = tile
@@ -290,29 +381,50 @@ class OreDepositStructure(Structure):
 		
 		canvas.tag_bind(item, "<Enter>", lambda e, c=canvas: self.mouse_over(c))
 		canvas.tag_bind(item, "<Leave>", lambda e, c=canvas: self.mouse_leave(c))
+		canvas.tag_bind(item, "<Button-1>", lambda e, c=canvas: self.on_click(c, e))
 		
 	def mouse_over(self, canvas):
-		x0, y0, x1, y1 = canvas.bbox(self.tile)
+		try:
+			canvas.hover_var.set(self.name)
 		
-		canvas.tile_highlight = canvas.create_rectangle(
-			x0, y0,
-			x1, y1,
-			outline="red",
-			width=2,
-			fill="",
-			tags=("map", "hover")
-		)
-		
-		canvas.hover_var.set(self.name)
+		except TclError:
+			pass
 		
 	def mouse_leave(self, canvas):
 		try:
-			canvas.delete(canvas.tile_highlight)
-			
-			canvas.hover_var.set("")
-			
-		except AttributeError:
+			if canvas.winfo_exists():
+				try:
+					canvas.delete(getattr(canvas, "tile_highlight", None))
+				
+				except Exception:
+					pass
+					
+				canvas.hover_var.set("")
+				
+		except TclError:
 			pass
+			
+	def on_click(self, canvas, event):
+		game = self.game
+		player = game.player
+		play_screen = game.play_screen
+		
+		if self.in_range(player, 1, False):
+			player.action_target=self
+			
+			play_screen.start_action(f"Mining {self.name}")
+		
+	def mod_progress(self, mod, entity):
+		self.min_progress += mod
+		
+		if self.min_progress < 0:
+			self.min_progress = 0
+			
+		if self.min_progress >= self.max_progress:
+			self.min_progress = 0
+			
+			#Give reward
+			entity.add_item(self.ore, 1)
 
 #XML
 class Biome:
@@ -334,6 +446,12 @@ class Biome:
 		}
 		
 		return dict
+		
+class ItemType:
+	def __init__(self, *args):
+		self.id = args[0]
+		
+		self.name = args[1]
 
 class NoiseType:
 	def __init__(self, *args):
@@ -412,6 +530,8 @@ class OreDepositType:
 		self.name = args[1]
 		
 		self.color = args[2]
+		
+		self.ore = args[3]
 	
 class TileType:
 	def __init__(self, *args):

@@ -1,0 +1,50 @@
+<OreDeposits>
+	<Ore_Deposit>
+		<ID>CoalDeposit</ID>
+		<Name>Coal Deposit</Name>
+		<Color>#2B2B2B</Color>
+		<Ore>CoalOre</Ore>
+	</Ore_Deposit>
+	<Ore_Deposit>
+		<ID>CopperDeposit</ID>
+		<Name>Copper Deposit</Name>
+		<Color>#B87333</Color>
+		<Ore>CopperOre</Ore>
+	</Ore_Deposit>
+	<Ore_Deposit>
+		<ID>GoldDeposit</ID>
+		<Name>Gold Deposit</Name>
+		<Color>#C9A227</Color>
+		<Ore>GoldOre</Ore>
+	</Ore_Deposit>
+	<Ore_Deposit>
+		<ID>IronDeposit</ID>
+		<Name>Iron Deposit</Name>
+		<Color>#8C3F2B</Color>
+		<Ore>IronOre</Ore>
+	</Ore_Deposit>
+	<Ore_Deposit>
+		<ID>NickelDeposit</ID>
+		<Name>Nickel Deposit</Name>
+		<Color>#7A8F2A</Color>
+		<Ore>NickelOre</Ore>
+	</Ore_Deposit>
+	<Ore_Deposit>
+		<ID>SilverDeposit</ID>
+		<Name>Silver Deposit</Name>
+		<Color>#8E9AA6</Color>
+		<Ore>SilverOre</Ore>
+	</Ore_Deposit>
+	<Ore_Deposit>
+		<ID>TinDeposit</ID>
+		<Name>Tin Deposit</Name>
+		<Color>#6E5A4C</Color>
+		<Ore>TinOre</Ore>
+	</Ore_Deposit>
+	<Ore_Deposit>
+		<ID>ZincDeposit</ID>
+		<Name>Zinc Deposit</Name>
+		<Color>#6B4E2E</Color>
+		<Ore>ZincOre</Ore>
+	</Ore_Deposit>
+</OreDeposits>

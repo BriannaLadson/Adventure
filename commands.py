@@ -11,11 +11,28 @@ def process_cmd(event, screen, cmd):
 	except KeyError:
 		pass
 		
+def mine(screen, cmd):
+	game = screen.game
+	player = game.player
+	
+	mine_progress = player.get_skill_progress("mining")
+	
+	ore_deposit = player.action_target
+	
+	screen.action_bar.action_target = player.action_target
+	
+	ore_deposit.mod_progress(mine_progress, player)
+	
+	player.mod_skill_xp("mining")
+	
+	game.turns = 1
+		
 def move(screen, cmd):
 	game = screen.game
 	player = screen.player
 	
-	game.move_entity(player, cmd)
+	if not player.busy:
+		game.move_entity(player, cmd)
 		
 cmd_dict = {
 	"north": move,
@@ -27,4 +44,5 @@ cmd_dict = {
 	"west": move,
 	"east": move,
 	"in": move,
+	"mine": mine,
 }

@@ -195,6 +195,23 @@ def parse_biomes(file, biomes_node):
 	
 	file["biomes_dict"] = biomes_dict
 	
+def parse_items(file, root):
+	item_types_dict = get_dict(file, "item_types_dict")
+	
+	for item in root.findall("Item"):
+		id = item.find("ID").text
+		
+		name = item.find("Name").text
+		
+		obj = entities.ItemType(
+			id,
+			name,
+		)
+		
+		item_types_dict[id] = obj
+		
+	file["item_types_dict"] = item_types_dict
+	
 def parse_ore_deposits(file, root):
 	ore_deposits_dict = get_dict(file, "ore_deposits_dict")
 	
@@ -205,10 +222,13 @@ def parse_ore_deposits(file, root):
 		
 		color = ore_deposit.find("Color").text
 		
+		ore = ore_deposit.find("Ore").text
+		
 		obj = entities.OreDepositType(
 			id,
 			name,
 			color,
+			ore,
 		)
 		
 		ore_deposits_dict[id] = obj
@@ -236,6 +256,7 @@ def parse_tile_types(file, tile_types_node):
 	file["tile_types_dict"] = tile_types_dict
 	
 xml_dict = {
+	"Items": parse_items,
 	"OreDeposits": parse_ore_deposits,
 	"WorldSettings": parse_world_settings,
 }
