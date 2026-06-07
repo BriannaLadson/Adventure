@@ -1,0 +1,4 @@
+terraforge-core
+numpy
+pillow
+noise
