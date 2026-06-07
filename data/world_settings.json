@@ -1,0 +1,108 @@
+{
+	"world_size": 300,
+	"num_islands": 1,
+	"island_spread": 0.3,
+	"min_island_spacing": null,
+	"local_map_size": 100,
+	"noise_types": {
+		"elevation": {
+			"seed": 0,
+			"octaves": 10,
+			"persistence": 0.5,
+			"lacunarity": 2.0,
+			"falloff": {
+				"type": "radial",
+				"strength": 0.5
+			},
+			"zoom": 1.0,
+			"redistribution": 1.0
+		},
+		"moisture": {
+			"seed": 0,
+			"octaves": 10,
+			"persistence": 0.5,
+			"lacunarity": 2.0,
+			"falloff": {
+				"type": "radial",
+				"strength": 0.5
+			},
+			"zoom": 1.0,
+			"redistribution": 1.0
+		},
+		"temperature": {
+			"seed": 0,
+			"octaves": 10,
+			"persistence": 0.5,
+			"lacunarity": 2.0,
+			"falloff": {
+				"type": "radial",
+				"strength": 0.5
+			},
+			"zoom": 1.0,
+			"redistribution": 1.0
+		}
+	},
+	"biomes": [
+		{
+			"id": "ocean",
+			"name": "Ocean",
+			"color": "#1E3A8A",
+			"rules": {
+				"elevation": [0.0, 0.3]
+			}
+		},
+		{
+			"id": "lowlands",
+			"name": "Lowlands",
+			"color": "#6BAF6B",
+			"rules": {
+				"elevation": [0.3, 0.6],
+				"moisture": [0.3, 0.6]
+			}
+		},
+		{
+			"id": "wetlands",
+			"name": "Wetlands",
+			"color": "#3E7C59",
+			"rules": {
+				"elevation": [0.3, 0.6],
+				"moisture": [0.6, 1.0]
+			}
+		},
+		{
+			"id": "drylands",
+			"name": "Drylands",
+			"color": "#C2B280",
+			"rules": {
+				"elevation": [0.3, 0.6],
+				"moisture": [0.0, 0.3]
+			}
+		},
+		{
+			"id": "coldlands",
+			"name": "Coldlands",
+			"color": "#E0F7FA",
+			"rules": {
+				"elevation": [0.3, 0.6],
+				"temperature": [0.0, 0.3]
+			}
+		},
+		{
+			"id": "hotlands",
+			"name": "Hotlands",
+			"color": "#E4A159",
+			"rules": {
+				"elevation": [0.3, 0.6],
+				"temperature": [0.6, 1.0]
+			}
+		},
+		{
+			"id": "highlands",
+			"name": "Highlands",
+			"color": "#8C6F3F",
+			"rules": {
+				"elevation": [0.6, 1.0]
+			}
+		}
+	]
+}

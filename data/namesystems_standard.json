@@ -1,0 +1,101 @@
+{
+	"human_civilization_names": {
+		"name": "Human Civilization Names",
+		"parts": [
+			["The"],
+			[
+				" Great ",
+				" Fantastic ",
+				" Mighty ",
+				" Noble ",
+				" Glorious ",
+				" Grand ",
+				" Golden ",
+				" Eternal ",
+				" Honored ",
+				" Supreme ",
+				" Sacred ",
+				" Iron ",
+				" Royal ",
+				" Ancient ",
+				" Proud ",
+				" Fearless ",
+				" Victorious ",
+				" Legendary ",
+				" Divine ",
+				" Crimson "
+			],
+			[
+				"Faction",
+				"Guild",
+				"Empire",
+				"Kingdom",
+				"Order",
+				"Alliance",
+				"Dominion",
+				"Collective",
+				"Legion",
+				"Brotherhood",
+				"Council",
+				"Union",
+				"Confederacy",
+				"Clan",
+				"Dynasty",
+				"Federation",
+				"Assembly",
+				"Society",
+				"Coalition",
+				"Syndicate"
+			]
+		]
+	},
+	"human_settlement_names": {
+		"name": "Human Settlement Names",
+		"parts": [
+			[
+				"Grae",
+				"Fan",
+				"Migh",
+				"No",
+				"Glo",
+				"Gran",
+				"Gol",
+				"Eter",
+				"Hon",
+				"Su",
+				"Sae",
+				"Ir",
+				"Roy",
+				"An",
+				"Prou",
+				"Fear",
+				"Vic",
+				"Le",
+				"Di",
+				"Crim"
+			],
+			[
+				"thorn",
+				"dor",
+				"vale",
+				"mere",
+				"heim",
+				"crest",
+				"ford",
+				"haven",
+				"moor",
+				"wick",
+				"shire",
+				"keep",
+				"watch",
+				"fell",
+				"mark",
+				"stone",
+				"port",
+				"reach",
+				"hold",
+				"stead"
+			]
+		]
+	}
+}

@@ -1,0 +1,23 @@
+{
+	"human": {
+		"name": "Human",
+		"civilization_number": 20,
+		"civilization_name_systems": [
+			"human_civilization_names"
+		],
+		"settlement_number": 10,
+		"settlement_biomes": [
+			"lowlands",
+			"wetlands",
+			"drylands",
+			"coldlands",
+			"hotlands",
+			"highlands"
+		],
+		"settlement_char": "T",
+		"settlement_char_color": "#000000",
+		"settlement_name_systems": [
+			"human_settlement_names"
+		]
+	}
+}
