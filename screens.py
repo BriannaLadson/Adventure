@@ -162,6 +162,8 @@ class CharacterCreationScreen(Screen):
 		
 		game.random_region_placement(player)
 		
+		game.discover_nearby_locations(player)
+		
 		helpf.save_data(game.save_path, "game", game)
 		
 		root.play_screen = PlayScreen(root)
@@ -173,12 +175,15 @@ class PlayScreen(Screen):
 	def __init__(self, root):
 		super().__init__(root)
 		
+		self.can_process_input = True
+		
 		if hasattr(root, "game"):
 			game = self.game = root.game
 			
 		else:
 			game = self.game = helpf.get_data(root.save_path, "game")
-		
+			
+		self.calendar = calendar = game.calendar
 		
 		player = self.player = game.player
 		
@@ -188,9 +193,23 @@ class PlayScreen(Screen):
 		info_fr = ttk.Frame(self)
 		info_fr.pack(fill=X)
 		
+		#Info Frame - Time & Date
+		calendar_fr = ttk.Frame(info_fr)
+		calendar_fr.pack(fill=X, expand=1)
+		
+		self.time_var = StringVar(value=f"Time: {calendar.time_string()}")
+		
+		time_lbl = ttk.Label(calendar_fr, textvariable=self.time_var, anchor="center")
+		time_lbl.pack()
+		
+		self.date_var = StringVar(value=f"Date: {calendar.date_string()}")
+		
+		date_lbl = ttk.Label(calendar_fr, textvariable=self.date_var, anchor="center")
+		date_lbl.pack()
+		
 		#Info Frame - Location
 		location_fr = ttk.Frame(info_fr)
-		location_fr.pack(side=LEFT, fill=X, expand=1)
+		location_fr.pack(fill=X, expand=1)
 		
 		self.location_var = StringVar(value=f"Location: {game.get_location(player)}")
 		
@@ -226,6 +245,8 @@ class PlayScreen(Screen):
 	def update_screen(self):
 		game = self.game
 		player = self.player
+		
+		self.update_calendar()
 		
 		self.location_var.set(f"Location: {game.get_location(player)}")
 		
@@ -270,6 +291,35 @@ class PlayScreen(Screen):
 			self.tile_map.update_map()
 			
 			self.update_tile_map = False
+			
+	def update_calendar(self):
+		calendar = self.calendar
+		
+		self.time_var.set(f"Time: {calendar.time_string()}")
+		
+		self.date_var.set(f"Date: {calendar.date_string()}")
+		
+	def discover_locations(self):
+		game = self.game
+		player = self.player
+		
+		if player.lx is not None:
+			return []
+			
+		return game.discover_nearby_locations(player)
+		
+	def handle_discovered_locations(self, locations):
+		if not locations:
+			return
+			
+		self.can_process_input = False
+		
+		txt = "\n".join(f"You discovered {location.name}!" for location in locations)
+		
+		for location in locations:
+			popup = SimplePopup(self.root, txt)
+			
+			popup.center()
 
 #Popups
 class Popup(Toplevel):
@@ -394,7 +444,26 @@ class OverwriteSavePopup(Popup):
 			root.world_generation_screen.display()
 			
 		self.destroy()
+	
+class SimplePopup(Popup):
+	def __init__(self, root, txt):
+		super().__init__(root)
 		
+		self.play_screen = None
+		
+		if hasattr(root, "play_screen"):
+			self.play_screen = root.play_screen
+		
+		ttk.Label(self, text=txt).pack()
+		
+		ttk.Button(self, text="OK", command=self.close).pack()
+		
+	def close(self):
+		if not self.play_screen == None:
+			self.play_screen.can_process_input = True
+			
+		self.destroy()
+	
 #Widgets
 class WorldSettingsNotebook(ttk.Notebook):
 	def __init__(self, parent, game):
@@ -948,7 +1017,7 @@ class TileMap(Canvas):
 					if not (0 <= wx < self.generator.map_size and 0 <= wy < self.generator.map_size):
 						continue
 
-				location = self.game.location_map[wy][wx]
+				location = self.player.memory.known_locations.get((wx, wy))
 
 				if location is None:
 					continue

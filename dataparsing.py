@@ -1,5 +1,6 @@
 import json
 import os
+from cqcalendar import CQCalendar
 
 import entities
 
@@ -22,9 +23,12 @@ def load_data(game, data_path="data"):
 		
 		if loader_func:
 			loader_func(game, data)
-		
+
+#World Settings		
 def load_world_settings(game, data):
 	game.world_size = data["world_size"]
+	
+	load_calendar(game, data)
 	
 	game.location_map = [
 		[None for _ in range(game.world_size)]
@@ -42,7 +46,14 @@ def load_world_settings(game, data):
 	game.min_island_spacing = data["min_island_spacing"]
 	
 	game.local_map_size = data["local_map_size"]
-	
+
+def load_calendar(game, data):
+	game.calendar = calendar = CQCalendar(
+		months = data["calendar"]["months"],
+		weekdays = data["calendar"]["weekdays"],
+	)
+
+#Other	
 def load_biome_objs(game):
 	biome_objs = {}
 	

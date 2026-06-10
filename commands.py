@@ -1,8 +1,19 @@
 def process_cmd(event, screen, cmd):
+	if not screen.can_process_input:
+		return
+	
 	try:
+		game = screen.game
+		
 		cmd_dict[cmd](screen, cmd)
 		
+		game.inc_time()
+		
+		new_locations = screen.discover_locations()
+		
 		screen.update_screen()
+		
+		screen.handle_discovered_locations(new_locations)
 		
 	except KeyError:
 		pass

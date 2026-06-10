@@ -4,6 +4,31 @@
 	"island_spread": 0.3,
 	"min_island_spacing": null,
 	"local_map_size": 100,
+	"calendar": {
+		"months": [
+			{"name": "Januwere", "days": 31},
+			{"name": "Febuwere", "days": 28},
+			{"name": "Marche", "days": 31},
+			{"name": "Apryle", "days": 30},
+			{"name": "Mae", "days": 31},
+			{"name": "Joon", "days": 30},
+			{"name": "Joolai", "days": 31},
+			{"name": "Awgust", "days": 31},
+			{"name": "Septembere", "days": 30},
+			{"name": "Oktobere", "days": 31},
+			{"name": "Novembere", "days": 30},
+			{"name": "Disembere", "days": 31}
+		],
+		"weekdays": [
+			"Varan",
+			"Tolden",
+			"Carrow",
+			"Merek",
+			"Roake",
+			"Velis",
+			"Hestyr"
+		]
+	},
 	"noise_types": {
 		"elevation": {
 			"seed": 0,

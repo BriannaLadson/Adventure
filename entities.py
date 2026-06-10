@@ -8,6 +8,8 @@ class Game:
 	def __init__(self, save_path):
 		self.save_path = save_path + "/game_data"
 		
+		self.calendar = None
+		
 		self.directions = {
 			"north": [0, -1],
 			"northwest": [-1, -1],
@@ -23,6 +25,18 @@ class Game:
 		
 		self.civilizations = []
 		self.settlements = []
+		
+	def inc_time(self, ticks=None):
+		if ticks is None:
+			ticks = self.get_turn_ticks(self.player)
+			
+		self.calendar.update(ticks=ticks)
+		
+	def get_turn_ticks(self, entity):
+		if entity.is_location_local():
+			return 1
+			
+		return 60
 		
 	def get_location(self, entity):
 		if entity.lx == None or entity.ly == None or entity.lz == None:
@@ -114,9 +128,6 @@ class Game:
 				
 				entity.lz = 0
 				
-				#if isinstance(entity, Player):
-				#	self.turns = 1
-				
 	def move_entity_tile(self, entity, dir):
 		map_size = self.local_map_size
 		
@@ -188,7 +199,23 @@ class Game:
 		self.location_map[gy][gx] = settlement
 		
 		return settlement
+	
+	def discover_nearby_locations(self, character):
+		new_locations = []
 		
+		for gy in range(character.gy - 1, character.gy + 2):
+			for gx in range(character.gx - 1, character.gx + 2):
+				gx %= self.world_size
+				gy %= self.world_size
+				
+				location = self.location_map[gy][gx]
+				
+				if location is not None and (gx, gy) not in character.memory.known_locations:
+					character.memory.known_locations[(gx, gy)] = location
+					new_locations.append(location)
+					
+		return new_locations
+	
 class Entity:
 	def __init__(self):
 		self.gx = 0
@@ -207,12 +234,18 @@ class Entity:
 		else:
 			return True
 
-#Creatures		
+#Creatures
 class Creature(Entity):
 	def __init__(self):
 		super().__init__()
 		
-class Player(Creature):
+		self.memory = Memory()
+		
+class Character(Creature):
+	def __init__(self):
+		super().__init__()
+		
+class Player(Character):
 	def __init__(self):
 		super().__init__()
 		
@@ -341,6 +374,12 @@ class Civilization:
 		self.settlements = []
 		
 		self.name = name
+
+
+#Other
+class Memory:
+	def __init__(self):
+		self.known_locations = {}
 
 #Json Objects		
 class Biome:
