@@ -1,6 +1,6 @@
-# Adventure v0.3.0
+# Adventure v0.4.0
 
-Adventure is a sandbox RPG simulation built using Python, Tkinter, and TerraForge, a procedural generation library I created.
+Adventure is a sandbox RPG simulation built using Python and Tkinter.
 
 The project focuses on procedural generation, exploration, simulation systems, and emergent gameplay.
 
@@ -33,7 +33,7 @@ Rather than following a predefined storyline, Adventure aims to create a world w
 * JSON-driven naming systems
 * Custom settlement map icons and colors
 
-### Gameplay Systems
+### Exploration & Discovery
 
 * Overworld exploration
 * Local tile-based exploration
@@ -41,9 +41,19 @@ Rather than following a predefined storyline, Adventure aims to create a world w
 * Overworld-to-local map transitions
 * 8-directional movement system
 * Command-based input system
+* Character memory system
+* Location discovery system
+* Discovery notifications
+* Settlement visibility based on player knowledge
 * Player location tracking across world and local maps
-* Save system with persistent world data
-* Save slot creation and overwrite handling
+
+### Time & Simulation
+
+* CQCalendar integration
+* Persistent in-game calendar
+* In-game clock
+* Date tracking
+* Variable time progression based on player actions
 
 ### Rendering & UI
 
@@ -84,31 +94,7 @@ Rather than following a predefined storyline, Adventure aims to create a world w
 * Expandable RPG framework
 * Utility systems for save management and procedural color handling
 
-## Project Status
-
-This repository contains the public release version of Adventure.
-
-Development continues beyond the public release. New systems and features are developed and tested before eventually being merged into the public version.
-
-## Planned Features
-
-* Time and calendar systems
-* Character memory
-* Location discovery
-* Cartography
-* NPC simulation
-* Conversations
-* Professions
-* Dynamic economy
-* Information sharing
-* Emergent storytelling
-
 ## Installation
-
-### Clone the Repository
-
-```bash
-git clone https://github.com/YOUR_USERNAME/Adventure.git
 ```
 
 ### Install Dependencies
@@ -134,13 +120,25 @@ python main.py
 Current dependencies include:
 
 * terraforge-core
+* cqcalendar
 * numpy
 * pillow
 * noise
 
-## About TerraForge
+## Libraries
 
-TerraForge is a procedural generation library I created for building overworld maps, biome systems, settlement generation tools, and other procedural game content.
+* [CQCalendar](https://github.com/BriannaLadson/CQCalendar): A customizable, tick-based time and calendar system for Python games and simulations.
+* [TerraForge](https://github.com/BriannaLadson/TerraForge): TerraForge is a versatile Python toolset for procedural map generation.
+
+## Support Development
+
+Adventure is actively developed, with new systems and features being added regularly.
+
+The version available in this repository represents the current public release. New features are typically developed and tested in private builds before they are merged into the public version.
+
+If you'd like to support the project and gain access to newer versions sooner, consider joining the Patreon.
+
+[Patreon](patreon.com/BLCodes) supporters receive early access to development builds and source code updates, allowing them to explore new systems and features before they are released publicly.
 
 ## License
 
