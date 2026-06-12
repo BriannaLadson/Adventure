@@ -13,6 +13,13 @@ def process_cmd(event, screen, cmd):
 		
 		screen.update_screen()
 		
+		building = screen.check_building_interaction()
+		
+		if building is not None:
+			screen.handle_building_interaction(building)
+			
+			return
+		
 		screen.handle_discovered_locations(new_locations)
 		
 	except KeyError:
