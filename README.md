@@ -1,4 +1,4 @@
-# Adventure v0.4.0
+# Adventure v0.5.0
 
 Adventure is a sandbox RPG simulation built using Python and Tkinter.
 
@@ -32,6 +32,38 @@ Rather than following a predefined storyline, Adventure aims to create a world w
 * Procedural settlement naming
 * JSON-driven naming systems
 * Custom settlement map icons and colors
+* Procedurally generated settlement professions
+* Procedurally generated settlement resources
+* Procedurally generated settlement building layouts
+* Enterable settlement maps powered by TownForge
+* Market buildings
+
+### Dynamic Economy
+
+* DyEcon integration
+* Global economy system
+* Settlement-level sub economies
+* Profession-based production
+* Daily production cycles
+* Dynamic item pricing
+* Settlement inventories
+* Supply and demand simulation
+* Production chain simulation
+* Economy inspection interface
+* Resource scarcity and surplus tracking
+
+### Production Chains
+
+Current production chains include:
+
+* Animal Corpse → Animal Hide → Animal Leather → Parchment
+
+Current professions include:
+
+* Hunter
+* Butcher
+* Tanner
+* Paper Maker
 
 ### Exploration & Discovery
 
@@ -45,6 +77,7 @@ Rather than following a predefined storyline, Adventure aims to create a world w
 * Location discovery system
 * Discovery notifications
 * Settlement visibility based on player knowledge
+* Known location tracking
 * Player location tracking across world and local maps
 
 ### Time & Simulation
@@ -54,6 +87,8 @@ Rather than following a predefined storyline, Adventure aims to create a world w
 * In-game clock
 * Date tracking
 * Variable time progression based on player actions
+* Daily simulation updates
+* Calendar-driven settlement production
 
 ### Rendering & UI
 
@@ -62,6 +97,10 @@ Rather than following a predefined storyline, Adventure aims to create a world w
 * Zoomable map display
 * Dynamic tile resizing
 * Settlement/location markers displayed on the overworld
+* Settlement map rendering
+* Building rendering
+* Building interaction system
+* Market interface
 * Dedicated world generation screen
 * Interactive procedural generation settings UI
 * Character creation flow
@@ -92,10 +131,10 @@ Rather than following a predefined storyline, Adventure aims to create a world w
 * Modular project structure
 * Expandable procedural generation pipeline
 * Expandable RPG framework
+* Save system using shelve
 * Utility systems for save management and procedural color handling
 
 ## Installation
-```
 
 ### Install Dependencies
 
@@ -103,10 +142,10 @@ Rather than following a predefined storyline, Adventure aims to create a world w
 pip install -r requirements.txt
 ```
 
-Or manually install TerraForge:
+Or manually install dependencies:
 
 ```bash
-pip install --upgrade terraforge-core
+pip install terraforge-core cqcalendar dyecon numpy pillow noise
 ```
 
 ## Running the Project
@@ -121,6 +160,7 @@ Current dependencies include:
 
 * terraforge-core
 * cqcalendar
+* dyecon
 * numpy
 * pillow
 * noise
@@ -129,6 +169,7 @@ Current dependencies include:
 
 * [CQCalendar](https://github.com/BriannaLadson/CQCalendar): A customizable, tick-based time and calendar system for Python games and simulations.
 * [TerraForge](https://github.com/BriannaLadson/TerraForge): TerraForge is a versatile Python toolset for procedural map generation.
+* [DyEcon](https://github.com/BriannaLadson/DyEcon): A lightweight dynamic economy simulation library for Python games and simulations.
 
 ## Support Development
 
@@ -138,7 +179,7 @@ The version available in this repository represents the current public release. 
 
 If you'd like to support the project and gain access to newer versions sooner, consider joining the Patreon.
 
-[Patreon](patreon.com/BLCodes) supporters receive early access to development builds and source code updates, allowing them to explore new systems and features before they are released publicly.
+[Patreon](https://patreon.com/BLCodes) supporters receive early access to development builds and source code updates, allowing them to explore new systems and features before they are released publicly.
 
 ## License
 
