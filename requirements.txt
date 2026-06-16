@@ -1,2 +1,6 @@
+noise
+numpy
+pillow
 terraforge-core
 cqcalendar
+dyecon

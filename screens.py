@@ -189,6 +189,10 @@ class PlayScreen(Screen):
 		
 		self.update_tile_map = False
 		
+		self.building_popup_types = {
+			"trade": TradePopup,
+		}
+		
 		#Info Frame
 		info_fr = ttk.Frame(self)
 		info_fr.pack(fill=X)
@@ -242,6 +246,8 @@ class PlayScreen(Screen):
 		
 		root.bind("5", lambda e: commands.process_cmd(e, self, "in"))
 		
+		root.bind("@", lambda e:CharacterSheetPopup(e, root, game))
+		
 	def update_screen(self):
 		game = self.game
 		player = self.player
@@ -265,10 +271,12 @@ class PlayScreen(Screen):
 				
 				if isinstance(location, entities.Settlement):
 					generator = entities.TownMapGenerator(
+						game,
 						location,
 						seed,
 						game.local_map_size,
 					)
+					map_type = "local"
 					
 				else:
 					biome_id = game.overworld_generator.get_biome(player.gx, player.gy)["id"]
@@ -316,10 +324,36 @@ class PlayScreen(Screen):
 		
 		txt = "\n".join(f"You discovered {location.name}!" for location in locations)
 		
-		for location in locations:
-			popup = SimplePopup(self.root, txt)
+		popup = SimplePopup(self.root, txt)
 			
-			popup.center()
+		popup.center()
+		
+	def check_building_interaction(self):
+		game = self.game
+		player = self.player
+		
+		if player.lx is None:
+			return
+			
+		if not isinstance(game.local_generator, entities.TownMapGenerator):
+			return
+			
+		building = game.local_generator.get_building_by_door(player.lx, player.ly)
+		
+		if building is None:
+			return
+			
+		return building
+		
+	def handle_building_interaction(self, building):
+		popup_type = getattr(building.building_type, "popup_type", None)
+		popup_cls = self.building_popup_types.get(popup_type)
+		
+		if popup_cls is None:
+			return
+			
+		popup = popup_cls(self.root, building)
+		popup.center()
 
 #Popups
 class Popup(Toplevel):
@@ -458,12 +492,69 @@ class SimplePopup(Popup):
 		
 		ttk.Button(self, text="OK", command=self.close).pack()
 		
+		self.center()
+		
 	def close(self):
 		if not self.play_screen == None:
 			self.play_screen.can_process_input = True
 			
 		self.destroy()
-	
+		
+class TradePopup(Popup):
+	def __init__(self, root, building):
+		super().__init__(root)
+		
+		self.play_screen = play_screen = None
+		
+		if hasattr(root, "play_screen"):
+			self.play_screen = play_screen = root.play_screen
+			
+		self.game = game = self.play_screen.game
+		self.player = player = game.player
+			
+		self.building = building
+		
+		self.settlement = settlement = building.settlement
+		
+		sub_economy = settlement.sub_economy
+		
+		self.settlement_gold_var = StringVar(value=f"{building.get_name()} (Gold: {settlement.gold})")	
+		ttk.Label(self, textvariable=self.settlement_gold_var, anchor="center").pack(fill=X)
+		
+		self.player_gold_var = StringVar(value=f"You (Gold: {player.gold})")
+		ttk.Label(self, textvariable=self.player_gold_var, anchor="center").pack(fill=X)
+		
+		self.trade_nb = TradeNotebook(self, root, building)
+		self.trade_nb.pack(fill=BOTH, expand=1)
+		
+		ttk.Button(self, text="OK", command=self.close).pack(fill=X)
+		
+	def close(self):
+		if self.play_screen is not None:
+			self.play_screen.can_process_input = True
+			
+		self.destroy()
+		
+	def update_popup(self):
+		self.settlement_gold_var.set(f"{self.building.get_name()} (Gold: {self.settlement.gold})")
+		self.player_gold_var.set(f"You (Gold: {self.player.gold})")
+		
+class CharacterSheetPopup(Popup):
+	def __init__(self, event, root, game):
+		super().__init__(root)
+		
+		self.game = game
+		self.player = player = game.player
+		
+		ttk.Label(self, text="Character Sheet", anchor="center").pack(fill=X)
+		
+		self.character_sheet_nb = CharacterSheetNotebook(self, game)
+		self.character_sheet_nb.pack(fill=BOTH, expand=1)
+		
+		ttk.Button(self, text="Close", command=self.destroy).pack(fill=X)
+		
+		self.center()
+		
 #Widgets
 class WorldSettingsNotebook(ttk.Notebook):
 	def __init__(self, parent, game):
@@ -476,6 +567,16 @@ class WorldSettingsNotebook(ttk.Notebook):
 		
 		self.region_tab = RegionTab(self, game)
 		self.add(self.region_tab, text="Local")
+		
+class CustomNotebook(ttk.Notebook):
+	def __init__(self, parent):
+		super().__init__(parent)
+		
+		self.tabs = {}
+		
+	def init_tabs(self):
+		for tab_name, tab in self.tabs.items():
+			self.add(tab, text=tab_name)
 		
 class Tab(ttk.Frame):
 	def __init__(self, parent):
@@ -870,6 +971,107 @@ class NoiseTypeTab(Tab):
 			
 		game.noise_types[noise_type_key] = noise_type
 		
+class CharacterSheetNotebook(CustomNotebook):
+	def __init__(self, parent, game):
+		super().__init__(parent)
+		
+		self.tabs = {
+			"Memory": MemoryNotebook(self, game),
+		}
+		
+		self.init_tabs()
+		
+class MemoryNotebook(CustomNotebook):
+	def __init__(self, parent, game):
+		super().__init__(parent)
+		
+		self.tabs = {
+			"Locations": LocationsTab(self, game),
+		}
+		
+		self.init_tabs()
+		
+class LocationsTab(Tab):
+	def __init__(self, parent, game):
+		super().__init__(parent)
+		
+		self.game = game
+		self.player = player = game.player
+		
+		known_location_quantity = game.get_discovered_locations_quantity(player)
+		location_quantity = len(game.settlements)
+		
+		ttk.Label(self, text=f"Discovered Locations: {known_location_quantity} / {location_quantity}", anchor="center").pack(fill=X)
+		
+		self.scrollable_fr = ScrollableFrame(self)
+		self.scrollable_fr.pack(fill=BOTH, expand=1)
+		
+		self.populate()
+		
+	def populate(self):
+		player = self.player
+		scr_fr = self.scrollable_fr.scrolling_frame
+		
+		helpf.destroy_children_widgets(scr_fr)
+		
+		for location in player.memory.known_locations.values():
+			lbl = ttk.Label(scr_fr, text=f"{location.name} ({location.gx},{location.gy})", anchor="center")
+			lbl.pack(fill=X)
+		
+class ScrollableFrame(ttk.Frame):
+	def __init__(self, parent):
+		super().__init__(parent)
+
+		# Create & Display Canvas/Scrollbar
+		self.canvas = Canvas(self)
+		self.canvas.pack(side=LEFT, fill=BOTH, expand=1)
+
+		self.scrollbar = ttk.Scrollbar(
+			self,
+			orient="vertical",
+			command=self.canvas.yview,
+		)
+		self.scrollbar.pack(side=RIGHT, fill=Y)
+
+		self.scrolling_frame = ttk.Frame(self.canvas)
+
+		# Connect Canvas and Scrollbar
+		self.canvas.configure(
+			yscrollcommand=self.scrollbar.set
+		)
+
+		# Add Scrolling Frame to Canvas
+		self.canvas_window = self.canvas.create_window(
+			(0, 0),
+			window=self.scrolling_frame,
+			anchor="nw",
+		)
+
+		self.scrolling_frame.bind(
+			"<Configure>",
+			self.update_scrollregion,
+		)
+
+		self.canvas.bind(
+			"<Configure>",
+			self.resize_frame,
+		)
+
+	def update_scrollregion(self, event=None):
+		# Update Scrollregion when Scrolling Frame size changes
+		self.canvas.configure(
+			scrollregion=self.canvas.bbox("all")
+		)
+
+	def resize_frame(self, event=None):
+		# Makes Scrolling Frame match Canvas width
+		canvas_width = event.width
+
+		self.canvas.itemconfigure(
+			self.canvas_window,
+			width=canvas_width,
+		)
+		
 class TileMap(Canvas):
 	def __init__(self, parent, game, generator, map_type="overworld"):
 		super().__init__(parent, highlightbackground="black", highlightthickness=2)
@@ -1077,11 +1279,11 @@ class TileMap(Canvas):
 		half = self.map_size // 2
 		px, py = self.get_player_coords()
 		
-		for building in self.generator.generator.buildings:
-			x = building["x"]
-			y = building["y"]
-			w = building["width"]
-			h = building["height"]
+		for building in self.generator.buildings:
+			x = building.x
+			y = building.y
+			w = building.width
+			h = building.height
 			
 			screen_x = x - px + half
 			screen_y = y - py + half
@@ -1100,14 +1302,14 @@ class TileMap(Canvas):
 			item = self.create_rectangle(
 				x0, y0,
 				x1, y1,
-				fill=building["color"],
+				fill=building.color,
 				outline="black",
 				width=2,
 			)
 			
 			self.building_items.append(item)
 			
-			door_x, door_y = building["door"]
+			door_x, door_y = building.door
 			
 			door_screen_x = door_x - px + half
 			door_screen_y = door_y - py + half
@@ -1159,3 +1361,199 @@ class TileMap(Canvas):
 			
 		else:
 			return self.player.lx, self.player.ly
+		
+class TradeNotebook(CustomNotebook):
+	def __init__(self, parent, root, building):
+		super().__init__(parent)
+		
+		self.parent = parent
+		self.root = root
+		self.building = building
+		
+		self.tabs = {
+			"Buy": BuyItemTab(self),
+			"Sell": SellItemTab(self),
+		}
+		
+		self.init_tabs()
+		
+	def update_tabs(self):
+		self.parent.update_popup()
+		
+		for tab in self.tabs.values():
+			tab.update_tab()
+		
+class BuyItemTab(Tab):
+	def __init__(self, parent):
+		super().__init__(parent)
+		
+		self.trade_nb = parent
+		self.root = parent.root
+		self.game = self.root.play_screen.game
+		self.player = self.game.player
+		self.settlement = parent.building.settlement
+		
+		self.grid = TradeGrid(self, self.settlement.sub_economy, self.game)
+		self.grid.pack(fill=BOTH, expand=1)
+		
+		ttk.Button(self, text="Buy Item", command=self.buy_item).pack(fill=X)
+		
+	def buy_item(self):
+		item_id = self.grid.get_selected_item()
+		
+		if item_id is None:
+			return
+			
+		success = self.game.buy_item(self.player, self.settlement, item_id)
+		
+		if success:
+			self.trade_nb.update_tabs()
+			
+	def update_tab(self):
+		self.grid.populate_items()
+		
+class SellItemTab(Tab):
+	def __init__(self, parent):
+		super().__init__(parent)
+
+		self.trade_nb = parent
+		self.root = parent.root
+		self.game = self.root.play_screen.game
+		self.player = self.game.player
+		self.settlement = parent.building.settlement
+
+		self.grid = PlayerInventoryGrid(
+			self,
+			self.player,
+			self.game,
+			self.settlement,
+		)
+		self.grid.pack(fill=BOTH, expand=1)
+
+		ttk.Button(
+			self,
+			text="Sell Item",
+			command=self.sell_item
+		).pack(fill=X)
+
+	def sell_item(self):
+		item_id = self.grid.get_selected_item()
+
+		if item_id is None:
+			return
+
+		success = self.game.sell_item(
+			self.player,
+			self.settlement,
+			item_id
+		)
+
+		if success:
+			self.trade_nb.update_tabs()
+
+	def update_tab(self):
+		self.grid.populate_items()
+		
+class TradeGrid(ttk.Treeview):
+	def __init__(self, parent, sub_economy, game):
+		super().__init__(parent)
+		
+		columns = ("item", "quantity", "price", "creator")
+		
+		super().__init__(parent, columns=columns, show="headings")
+		
+		self.sub_economy = sub_economy
+		self.game = game
+		
+		self.heading("item", text="Item")
+		self.heading("quantity", text="Quantity")
+		self.heading("price", text="Price")
+		self.heading("creator", text="Creator")
+		
+		for col in columns:
+			self.column(col, width=120, anchor="center", stretch=True)
+			
+		self.populate_items()
+		
+	def populate_items(self):
+		for row in self.get_children():
+			self.delete(row)
+			
+		inventory = getattr(self.sub_economy, "inventory", {})
+		
+		for item_type_id, quantity in inventory.items():
+			if quantity <= 0:
+				continue
+				
+			item_type = self.game.item_type_objs[item_type_id]
+			price = self.sub_economy.get_value(item_type_id)
+			
+	
+			self.insert(
+				"",
+				"end",
+				iid=item_type_id,
+				values=(
+					item_type.name,
+					quantity,
+					price,
+					item_type.creator,
+				),
+			)
+			
+	def get_selected_item(self):
+		selected = self.selection()
+		
+		if not selected:
+			return None
+			
+		return selected[0]
+		
+class PlayerInventoryGrid(ttk.Treeview):
+	def __init__(self, parent, player, game, settlement):
+		columns = ("item", "quantity", "price")
+		
+		super().__init__(parent, columns=columns, show="headings")
+		
+		self.player = player
+		self.game = game
+		self.settlement = settlement
+		
+		self.heading("item", text="Item")
+		self.heading("quantity", text="Quantity")
+		self.heading("price", text="Price")
+		
+		for col in columns:
+			self.column(col, width=120, anchor="center", stretch=True)
+			
+		self.populate_items()
+		
+	def populate_items(self):
+		for row in self.get_children():
+			self.delete(row)
+			
+		for item_type_id, quantity in self.player.inventory.items():
+			if quantity <= 0:
+				continue
+				
+			item_type = self.game.item_type_objs[item_type_id]
+			price = self.settlement.sub_economy.get_value(item_type_id)
+			
+			self.insert(
+				"",
+				"end",
+				iid=item_type_id,
+				values=(
+					item_type.name,
+					quantity,
+					price,
+				),
+			)
+			
+	def get_selected_item(self):
+		selected = self.selection()
+		
+		if not selected:
+			return None
+			
+		return selected[0]

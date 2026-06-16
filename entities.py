@@ -1,8 +1,12 @@
 import random
 import numpy as np
 from terraforge import TownForge
+from dyecon import Economy, SubEconomy
 
 import helpfunctions as helpf
+import professions
+import itemtypes
+import buildingtypes
 
 class Game:
 	def __init__(self, save_path):
@@ -25,6 +29,19 @@ class Game:
 		
 		self.civilizations = []
 		self.settlements = []
+		
+		self.building_type_objs = buildingtypes.BUILDING_TYPES
+		
+		self.profession_objs = professions.PROFESSIONS
+		
+		self.item_type_objs = itemtypes.ITEM_TYPES
+		
+		base_values = {}
+		
+		for key, val in self.item_type_objs.items():
+			base_values[key] = val.base_value
+		
+		self.economy = Economy(base_values=base_values)
 		
 	def inc_time(self, ticks=None):
 		if ticks is None:
@@ -187,18 +204,34 @@ class Game:
 		settlement_name_system_id = race.get_name_system_id("settlement")
 		settlement_name = self.name_system_objs[settlement_name_system_id].get_name()
 		
+		sub_economy = SubEconomy(self.economy)
+		gold = random.randint(race.settlement_gold[0], race.settlement_gold[1])
+		
 		settlement = Settlement(
 			gx, gy, 
 			settlement_char, 
 			settlement_char_color,
 			settlement_name,
+			race.settlement_buildings,
+			sub_economy,
+			gold,
 		)
 			
 		self.settlements.append(settlement)
 		
+		self.generate_settlement_professions(settlement, race)
+		
 		self.location_map[gy][gx] = settlement
 		
 		return settlement
+		
+	def generate_settlement_professions(self, settlement, race):
+		settlement.professions = {}
+		
+		for profession_id, amount_range in race.settlement_professions.items():
+			min_amount, max_amount = amount_range
+			
+			settlement.professions[profession_id] = random.randint(min_amount, max_amount)
 	
 	def discover_nearby_locations(self, character):
 		new_locations = []
@@ -215,6 +248,58 @@ class Game:
 					new_locations.append(location)
 					
 		return new_locations
+	
+	def run_settlement_production(self):
+		for settlement in self.settlements:
+			settlement.run_production(self)
+			
+	def daily_update(self, calendar=None):
+		if calendar is None:
+			calendar = self.calendar
+		
+		if calendar.hour == 12 and not calendar.is_pm:
+			self.run_settlement_production()
+	
+	def get_discovered_locations_quantity(self, entity):
+		if hasattr(entity, "memory"):
+			memory = entity.memory
+			
+			return len(memory.known_locations.values())
+			
+		return 0
+	def buy_item(self, buyer, settlement, item_id, quantity=1):
+		price = settlement.sub_economy.get_value(item_id) * quantity
+		
+		if buyer.gold < price:
+			return False
+			
+		if not settlement.sub_economy.has_item(item_id, quantity):
+			return False
+			
+		buyer.gold -= price
+		settlement.gold += price
+		
+		settlement.sub_economy.remove_item(item_id, quantity)
+		buyer.add_item(item_id, quantity)
+		
+		return True
+	
+	def sell_item(self, seller, settlement, item_id, quantity=1):
+		price = settlement.sub_economy.get_value(item_id) * quantity
+		
+		if not seller.remove_item(item_id, quantity):
+			return False
+			
+		if settlement.gold < price:
+			seller.add_item(item_id, quantity)
+			return False
+			
+		seller.gold += price
+		settlement.gold -= price
+		
+		settlement.sub_economy.add_item(item_id, quantity)
+		
+		return True
 	
 class Entity:
 	def __init__(self):
@@ -245,13 +330,58 @@ class Character(Creature):
 	def __init__(self):
 		super().__init__()
 		
+		self.gold = 0
+		
+		self.inventory = {}
+		
+	def add_item(self, item_id, quantity=1):
+		self.inventory[item_id] = (self.inventory.get(item_id, 0) + quantity)
+		
+	def remove_item(self, item_id, quantity=1):
+		if item_id not in self.inventory:
+			return False
+			
+		self.inventory[item_id] -= quantity
+		
+		if self.inventory[item_id] <= 0:
+			del self.inventory[item_id]
+			
+		return True
+		
 class Player(Character):
 	def __init__(self):
 		super().__init__()
 		
 		self.char = '@'
+		
+		self.gold = 100 #For Testing Only. Remove Later!
 
-#Map		
+#Map
+class Building:
+	def __init__(self, building_data, building_type, settlement=None):
+		self.id = building_data["id"]
+		
+		self.type = building_data["type"]
+		
+		self.name = building_data["name"]
+		
+		self.x = building_data["x"]
+		self.y = building_data["y"]
+		
+		self.width = building_data["width"]
+		self.height = building_data["height"]
+		
+		self.color = building_data["color"]
+		
+		self.door = building_data["door"]
+		
+		self.building_type = building_type
+		
+		self.settlement = settlement
+		
+	def get_name(self):
+		return f"{self.settlement.name} {self.building_type.name}"
+		
 class LocalMapGenerator:
 	def __init__(self, biome, seed, map_size):
 		self.biome = biome
@@ -283,7 +413,7 @@ class LocalMapGenerator:
 		return x,y
 		
 class Settlement:
-	def __init__(self, gx, gy, char, char_color, name="Settlement"):
+	def __init__(self, gx, gy, char, char_color, name="Settlement", building_rules=None, sub_economy=None, gold=0):
 		self.gx = gx
 		self.gy = gy
 		
@@ -295,8 +425,34 @@ class Settlement:
 		
 		self.name = name
 		
+		if building_rules is None:
+			building_rules = {}
+			
+		self.building_rules = building_rules
+		
+		self.professions = {}
+		
+		self.sub_economy = sub_economy
+		
+		self.gold = gold
+		
+		self.resources = {
+			"fauna": random.randint(0, 100),
+			"mineral": random.randint(0, 100),
+			"trees": random.randint(0, 100),
+		}
+		
+	def run_production(self, game):
+		for profession in game.profession_objs.values():
+			profession.produce(self, game)
+			
+	def get_profession_quantity(self, profession_obj):
+		return self.professions.get(profession_obj.id, 0)
+		
 class TownMapGenerator:
-	def __init__(self, settlement, seed, map_size):
+	def __init__(self, game, settlement, seed, map_size):
+		self.game = game
+		
 		self.settlement = settlement
 		
 		self.seed = seed
@@ -309,7 +465,10 @@ class TownMapGenerator:
 		
 		self.tile_outline_width = 2
 		
+		building_types = self.get_building_types()
+		
 		self.generator = TownForge(
+			building_types=building_types,
 			map_size=map_size,
 			seed=seed,
 		)
@@ -318,6 +477,15 @@ class TownMapGenerator:
 		
 	def generate_map(self):
 		self.map_array = self.generator.generate()
+		
+		self.buildings = []
+		
+		for building_data in self.generator.buildings:
+			building_type = self.game.building_type_objs[building_data["type"]]
+		
+			building = Building(building_data, building_type, self.settlement)
+			
+			self.buildings.append(building)
 		
 	def tile_color(self, x, y):
 		tile = self.map_array[y][x]
@@ -363,6 +531,31 @@ class TownMapGenerator:
 						return tx, ty
 						
 		return x, y
+		
+	def get_building_types(self):
+		building_types = {}
+		
+		for building_type_id, rule in self.settlement.building_rules.items():
+			building_type = self.game.building_type_objs[building_type_id]
+			
+			building_types[building_type_id] = {
+				"id": building_type.id,
+				"name": building_type.name,
+				"color": building_type.color,
+				"size": tuple(building_type.size),
+				"min_quantity": rule["min_quantity"],
+				"max_quantity": rule["max_quantity"],
+				"priority": rule["priority"],
+			}
+			
+		return building_types
+		
+	def get_building_by_door(self, x, y):
+		for building in self.buildings:
+			if building.door == (x, y):
+				return building
+				
+		return None
 		
 #Factions
 class Civilization:
@@ -427,6 +620,12 @@ class Race:
 		self.settlement_char_color = args[7]
 		
 		self.settlement_name_systems = args[8]
+		
+		self.settlement_buildings = args[9]
+		
+		self.settlement_professions = args[10]
+		
+		self.settlement_gold = args[11]
 		
 	def get_name_system_id(self, name_system_type):
 		name_systems = getattr(self, f"{name_system_type}_name_systems")

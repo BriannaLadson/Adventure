@@ -18,6 +18,23 @@
 		"settlement_char_color": "#000000",
 		"settlement_name_systems": [
 			"human_settlement_names"
-		]
+		],
+		"settlement_buildings": {
+			"market_building": {
+				"min_quantity": 1,
+				"max_quantity": 1,
+				"priority": 100
+			}
+		},
+		"settlement_professions": {
+			"hunter": [0, 100],
+			"butcher": [0, 100],
+			"ink_maker": [0, 100],
+			"tanner": [0, 100],
+			"tree_cutter": [0, 100],
+			"paper_maker": [0, 100],
+			"wood_burner": [0, 100]
+		},
+		"settlement_gold": [0, 100]
 	}
 }

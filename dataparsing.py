@@ -51,7 +51,10 @@ def load_calendar(game, data):
 	game.calendar = calendar = CQCalendar(
 		months = data["calendar"]["months"],
 		weekdays = data["calendar"]["weekdays"],
+		debug_callbacks=True,
 	)
+	
+	calendar.on_day(game.daily_update)
 
 #Other	
 def load_biome_objs(game):
@@ -106,6 +109,9 @@ def load_races(game, data):
 			race_data["settlement_char"],
 			race_data["settlement_char_color"],
 			race_data["settlement_name_systems"],
+			race_data["settlement_buildings"],
+			race_data["settlement_professions"],
+			race_data["settlement_gold"],
 		)
 		
 		race_objs[id] = race_obj

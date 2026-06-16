@@ -69,3 +69,7 @@ def rgb_to_hex(rgb: tuple[int, int, int]) -> str:
     r, g, b = rgb
 	
     return f"#{r:02x}{g:02x}{b:02x}"
+	
+def destroy_children_widgets(widget):
+	for child in widget.winfo_children():
+		child.destroy()
