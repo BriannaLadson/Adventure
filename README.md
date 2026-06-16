@@ -62,16 +62,18 @@ Rather than following a predefined storyline, Adventure aims to create a world w
 * Daily production cycles
 * Dynamic item pricing
 * Settlement inventories
+* Settlement gold reserves
 * Supply and demand simulation
 * Production chain simulation
-* Economy inspection interface
 * Resource scarcity and surplus tracking
+* Buy and sell item system
 
 ### Production Chains
 
 Current production chains include:
 
 * Animal Corpse → Animal Hide → Animal Leather → Parchment
+* Wood → Coal → Ink
 
 Current professions include:
 
@@ -79,6 +81,22 @@ Current professions include:
 * Butcher
 * Tanner
 * Paper Maker
+* Tree Cutter
+* Wood Burner
+* Ink Maker
+* Cartographer
+
+### Cartography
+
+* Procedural location discovery
+* Character location memory
+* Known location tracking
+* Settlement visibility based on player knowledge
+* Cartographer profession
+* Settlement-generated maps
+* Cartography-based map accuracy
+* Map production using parchment and ink
+* Foundations for map-based exploration gameplay
 
 ### Exploration & Discovery
 
@@ -94,6 +112,16 @@ Current professions include:
 * Settlement visibility based on player knowledge
 * Known location tracking
 * Player location tracking across world and local maps
+
+### Character & Inventory Systems
+
+* Character Sheet
+* Inventory system
+* Item inspection interface
+* Inventory tracking
+* Player gold tracking
+* Discovered location tracking
+* Memory interface
 
 ### Time & Simulation
 
@@ -116,6 +144,8 @@ Current professions include:
 * Building rendering
 * Building interaction system
 * Market interface
+* Trade interface
+* Character Sheet interface
 * Dedicated world generation screen
 * Interactive procedural generation settings UI
 * Character creation flow
