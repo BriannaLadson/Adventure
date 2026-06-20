@@ -8,6 +8,8 @@ class ItemType:
 		
 		self.creator = None
 		
+		self.description = ""
+		
 class AnimalCorpse(ItemType):
 	def __init__(self):
 		super().__init__()

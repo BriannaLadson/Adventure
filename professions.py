@@ -55,6 +55,46 @@ class Hunter(Profession):
 		
 		sub_economy.add_item("animal_corpse", quantity=animal_corpse_quantity)
 		
+class Cartographer(Profession):
+	def __init__(self):
+		super().__init__()
+		
+		self.id = "cartographer"
+		
+		self.name = "Cartographer"
+		
+	def produce(self, settlement, game):
+		sub_economy = settlement.sub_economy
+		
+		cartographers = settlement.get_profession_quantity(self)
+		
+		for i in range(cartographers):
+			parchment_quantity = sub_economy.get_quantity("parchment")
+			ink_quantity = sub_economy.get_quantity("ink")
+			
+			if parchment_quantity < 1:
+				sub_economy.change_modifier("parchment", 1)
+				
+			if ink_quantity < 1:
+				sub_economy.change_modifier("ink", 1)
+			
+			if parchment_quantity >= 1 and ink_quantity >= 1:
+				sub_economy.remove_item("parchment", 1)
+				sub_economy.remove_item("ink", 1)
+				
+				sub_economy.change_modifier("parchment", -1)
+				sub_economy.change_modifier("ink", -1)
+				
+				location = game.get_random_location()
+				cartography_lvl = random.randint(1, 100)
+				
+				map_item = game.create_map(location, cartography_lvl=cartography_lvl, settlement=settlement)
+				
+				sub_economy.add_item(map_item.id)
+				
+				
+				
+		
 class Butcher(Profession):
 	def __init__(self):
 		super().__init__()
@@ -142,4 +182,5 @@ PROFESSIONS = {
 	"tree_cutter": TreeCutter(),
 	"paper_maker": PaperMaker(),
 	"wood_burner": WoodBurner(),
+	"cartographer": Cartographer(),
 }

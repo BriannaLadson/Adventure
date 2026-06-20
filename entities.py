@@ -7,6 +7,8 @@ import helpfunctions as helpf
 import professions
 import itemtypes
 import buildingtypes
+import items
+import inventory
 
 class Game:
 	def __init__(self, save_path):
@@ -72,6 +74,13 @@ class Game:
 				return f"{location.name} {entity.lx},{entity.ly},{entity.lz}"
 			
 			return f"{entity.lx},{entity.ly},{entity.lz}"
+		
+	def get_random_location(self):
+		if len(self.settlements) > 0:
+			return random.choice(self.settlements)
+			
+		else:
+			return None
 		
 	def random_region_placement(self, entity):
 		map_size = self.world_size
@@ -267,6 +276,7 @@ class Game:
 			return len(memory.known_locations.values())
 			
 		return 0
+		
 	def buy_item(self, buyer, settlement, item_id, quantity=1):
 		price = settlement.sub_economy.get_value(item_id) * quantity
 		
@@ -280,18 +290,18 @@ class Game:
 		settlement.gold += price
 		
 		settlement.sub_economy.remove_item(item_id, quantity)
-		buyer.add_item(item_id, quantity)
+		buyer.inventory.add_item(item_id, quantity)
 		
 		return True
 	
 	def sell_item(self, seller, settlement, item_id, quantity=1):
 		price = settlement.sub_economy.get_value(item_id) * quantity
 		
-		if not seller.remove_item(item_id, quantity):
+		if not seller.inventory.remove_item(item_id, quantity):
 			return False
 			
 		if settlement.gold < price:
-			seller.add_item(item_id, quantity)
+			seller.inventory.add_item(item_id, quantity)
 			return False
 			
 		seller.gold += price
@@ -300,6 +310,44 @@ class Game:
 		settlement.sub_economy.add_item(item_id, quantity)
 		
 		return True
+		
+	def create_map(self, location, creator=None, cartography_lvl=1, settlement=None):
+		value = 1
+		
+		success = random.randint(1, 100) <= cartography_lvl
+		
+		if success:
+			gx = location.gx
+			gy = location.gy
+			
+		else:
+			gx = random.randint(0, self.world_size - 1)
+			gy = random.randint(0, self.world_size - 1)
+			
+		if settlement is not None:
+			value = self.get_map_value(settlement, cartography_lvl)
+			
+		map_item = items.Map(
+			location=location,
+			gx=gx,
+			gy=gy,
+			creator=creator,
+			cartography_lvl=cartography_lvl,
+			value=value
+		)
+		
+		self.item_type_objs[map_item.id] = map_item
+		self.economy.set_base_value(map_item.id, map_item.value)
+		
+		return map_item
+		
+	def get_map_value(self, settlement, cartography_lvl):
+		parchment_value = settlement.sub_economy.get_value("parchment")
+		ink_value = settlement.sub_economy.get_value("ink")
+		
+		material_cost = parchment_value + ink_value
+		
+		return int(material_cost + cartography_lvl)
 	
 class Entity:
 	def __init__(self):
@@ -332,21 +380,7 @@ class Character(Creature):
 		
 		self.gold = 0
 		
-		self.inventory = {}
-		
-	def add_item(self, item_id, quantity=1):
-		self.inventory[item_id] = (self.inventory.get(item_id, 0) + quantity)
-		
-	def remove_item(self, item_id, quantity=1):
-		if item_id not in self.inventory:
-			return False
-			
-		self.inventory[item_id] -= quantity
-		
-		if self.inventory[item_id] <= 0:
-			del self.inventory[item_id]
-			
-		return True
+		self.inventory = inventory.Inventory()
 		
 class Player(Character):
 	def __init__(self):
@@ -355,6 +389,8 @@ class Player(Character):
 		self.char = '@'
 		
 		self.gold = 100 #For Testing Only. Remove Later!
+
+
 
 #Map
 class Building:

@@ -555,6 +555,28 @@ class CharacterSheetPopup(Popup):
 		
 		self.center()
 		
+class ItemPopup(Popup):
+	def __init__(self, root, game, item_id, quantity=1):
+		super().__init__(root)
+		
+		self.game = game
+		self.item_id = item_id
+		self.quantity = quantity
+		self.item = item = game.item_type_objs[item_id]
+		
+		ttk.Label(self, text=self.item.name, anchor="center").pack(fill=X)
+		
+		ttk.Label(self, text=f"Quantity: {quantity}", anchor="center").pack(fill=X)
+		
+		value = getattr(self.item, "value", getattr(self.item, "base_value", 0))
+		ttk.Label(self, text=f"Base Value: {value}", anchor="center").pack(fill=X)
+		
+		ttk.Label(self, text=item.description, wraplength=300, justify="center").pack(fill=BOTH, expand=1)
+		
+		ttk.Button(self, text="Close", command=self.destroy).pack(fill=X)
+		
+		self.center()
+		
 #Widgets
 class WorldSettingsNotebook(ttk.Notebook):
 	def __init__(self, parent, game):
@@ -970,12 +992,14 @@ class NoiseTypeTab(Tab):
 		noise_type["redistribution"] = self.redistribution_var.get()
 			
 		game.noise_types[noise_type_key] = noise_type
-		
+
+#Character Sheet		
 class CharacterSheetNotebook(CustomNotebook):
 	def __init__(self, parent, game):
 		super().__init__(parent)
 		
 		self.tabs = {
+			"Inventory": InventoryTab(self, game),
 			"Memory": MemoryNotebook(self, game),
 		}
 		
@@ -1017,7 +1041,40 @@ class LocationsTab(Tab):
 		for location in player.memory.known_locations.values():
 			lbl = ttk.Label(scr_fr, text=f"{location.name} ({location.gx},{location.gy})", anchor="center")
 			lbl.pack(fill=X)
+			
+class InventoryTab(Tab):
+	def __init__(self, parent, game):
+		super().__init__(parent)
 		
+		self.game = game
+		self.player = player = game.player
+		
+		self.scrollable_fr = ScrollableFrame(self)
+		self.scrollable_fr.pack(fill=BOTH, expand=1)
+		
+		self.populate()
+		
+	def populate(self):
+		player = self.player
+		scr_fr = self.scrollable_fr.scrolling_frame
+		
+		for item_id, quantity in player.inventory.get_items():
+			item = self.game.item_type_objs[item_id]
+			
+			btn = ttk.Button(
+				scr_fr, 
+				text=f"{item.name} x{quantity}",
+				command=lambda item_id=item_id, quantity=quantity: ItemPopup(
+					self.winfo_toplevel(),
+					self.game,
+					item_id,
+					quantity
+				)
+			)
+			btn.pack(fill=X)
+
+
+#Other Widgets		
 class ScrollableFrame(ttk.Frame):
 	def __init__(self, parent):
 		super().__init__(parent)
@@ -1532,7 +1589,7 @@ class PlayerInventoryGrid(ttk.Treeview):
 		for row in self.get_children():
 			self.delete(row)
 			
-		for item_type_id, quantity in self.player.inventory.items():
+		for item_type_id, quantity in self.player.inventory.get_items():
 			if quantity <= 0:
 				continue
 				

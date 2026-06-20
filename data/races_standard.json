@@ -33,8 +33,9 @@
 			"tanner": [0, 100],
 			"tree_cutter": [0, 100],
 			"paper_maker": [0, 100],
-			"wood_burner": [0, 100]
+			"wood_burner": [0, 100],
+			"cartographer": [0, 5]
 		},
-		"settlement_gold": [0, 100]
+		"settlement_gold": [0, 1000]
 	}
 }
