@@ -1,4 +1,4 @@
-# Adventure v0.6.0
+# Adventure v0.7.0
 
 Adventure is a sandbox RPG simulation built using Python and Tkinter.
 
@@ -67,6 +67,7 @@ Rather than following a predefined storyline, Adventure aims to create a world w
 * Production chain simulation
 * Resource scarcity and surplus tracking
 * Buy and sell item system
+* Buy and sell map system
 
 ### Production Chains
 
@@ -74,6 +75,7 @@ Current production chains include:
 
 * Animal Corpse → Animal Hide → Animal Leather → Parchment
 * Wood → Coal → Ink
+* Gold Ore → Gold Bar → Gold Coin
 
 Current professions include:
 
@@ -85,6 +87,9 @@ Current professions include:
 * Wood Burner
 * Ink Maker
 * Cartographer
+* Miner
+* Smelter
+* Coinsmith
 
 ### Cartography
 
@@ -94,6 +99,8 @@ Current professions include:
 * Settlement visibility based on player knowledge
 * Cartographer profession
 * Settlement-generated maps
+* Unique map items
+* Map buying and selling
 * Cartography-based map accuracy
 * Map production using parchment and ink
 * Foundations for map-based exploration gameplay
@@ -122,6 +129,7 @@ Current professions include:
 * Player gold tracking
 * Discovered location tracking
 * Memory interface
+* Map inventory items
 
 ### Time & Simulation
 
