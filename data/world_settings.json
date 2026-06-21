@@ -3,7 +3,7 @@
 	"num_islands": 1,
 	"island_spread": 0.3,
 	"min_island_spacing": null,
-	"local_map_size": 100,
+	"local_map_size": 50,
 	"calendar": {
 		"months": [
 			{"name": "Januwere", "days": 31},

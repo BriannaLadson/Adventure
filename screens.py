@@ -151,6 +151,38 @@ class CharacterCreationScreen(Screen):
 		title_lbl = ttk.Label(self, text="Character Creation", anchor="center")
 		title_lbl.pack(fill=X)
 		
+		self.scrollable_frame = ScrollableFrame(self)
+		self.scrollable_frame.pack(fill=BOTH, expand=1)
+		scr_fr = self.scrollable_frame.scrolling_frame
+		
+		#Race
+		race_fr = ttk.Frame(scr_fr)
+		race_fr.pack(pady=5)
+		
+		race_lbl = ttk.Label(race_fr, text="Race", anchor="center")
+		race_lbl.pack()
+		
+		self.race_options = {
+			race.name: race for race in self.game.race_objs.values()
+		}
+		
+		self.race_var = StringVar(value=list(self.race_options.keys())[0])
+		
+		race_cbx = ttk.Combobox(race_fr, textvariable=self.race_var, values=list(self.race_options.keys()), state="readonly")
+		race_cbx.pack()
+		
+		#Starting Location
+		start_loc_fr = ttk.Frame(scr_fr)
+		start_loc_fr.pack(pady=5)
+		
+		start_loc_lbl = ttk.Label(start_loc_fr, text="Starting Location", anchor="center")
+		start_loc_lbl.pack()
+		
+		self.start_loc_var = StringVar(value="Random")
+		
+		start_loc_cbx = ttk.Combobox(start_loc_fr, textvariable=self.start_loc_var, values=["Random", "Random Settlement"], state="readonly")
+		start_loc_cbx.pack()
+		
 		self.continue_btn = ttk.Button(self, text="Continue", command=self.continue_)
 		self.continue_btn.pack(fill=X)
 		
@@ -158,11 +190,21 @@ class CharacterCreationScreen(Screen):
 		root = self.root
 		game = self.game
 		
-		player = game.player = entities.Player()
+		race_name = self.race_var.get()
+		race = self.race_options[race_name]
 		
-		game.random_region_placement(player)
+		player = game.player = entities.Player(race)
 		
+		#Initial Placement
+		if self.start_loc_var.get() == "Random":
+			game.random_region_placement(player)
+			
+		else:
+			game.random_settlement_placement(player)
+			
 		game.discover_nearby_locations(player)
+		
+		game.entities.append(player)
 		
 		helpf.save_data(game.save_path, "game", game)
 		
@@ -556,8 +598,10 @@ class CharacterSheetPopup(Popup):
 		self.center()
 		
 class ItemPopup(Popup):
-	def __init__(self, root, game, item_id, quantity=1):
+	def __init__(self, root, game, item_id, quantity=1, parent_tab=None):
 		super().__init__(root)
+		
+		self.parent_tab = parent_tab
 		
 		self.game = game
 		self.item_id = item_id
@@ -573,10 +617,49 @@ class ItemPopup(Popup):
 		
 		ttk.Label(self, text=item.description, wraplength=300, justify="center").pack(fill=BOTH, expand=1)
 		
+		self.action_funcs = {
+			"consume": self.consume_item,
+		}
+		
+		actions = getattr(item, "actions", [])
+		
+		if actions:
+			self.scrollable_frame = ScrollableFrame(self)
+			self.scrollable_frame.pack(fill=BOTH, expand=1)
+			
+			self.populate_actions(actions)
+		
 		ttk.Button(self, text="Close", command=self.destroy).pack(fill=X)
 		
 		self.center()
 		
+	def populate_actions(self, actions):
+		scr_fr = self.scrollable_frame.scrolling_frame
+		
+		for action in actions:
+			func = self.action_funcs.get(action)
+			
+			if func is None:
+				continue
+				
+			btn = ttk.Button(
+				scr_fr,
+				text=action.capitalize(),
+				command=func,
+			)
+			btn.pack(fill=X)
+			
+	def consume_item(self):
+		player = self.game.player
+		
+		if player.consume_item(self.item_id, self.game):
+			sheet = self.parent_tab.winfo_toplevel()
+			nb = sheet.character_sheet_nb
+			
+			nb.tabs["Inventory"].populate()
+			nb.tabs["Health"].tabs["Needs"].populate()
+			
+			self.destroy()
 #Widgets
 class WorldSettingsNotebook(ttk.Notebook):
 	def __init__(self, parent, game):
@@ -999,12 +1082,101 @@ class CharacterSheetNotebook(CustomNotebook):
 		super().__init__(parent)
 		
 		self.tabs = {
+			"Crafting": CraftingTab(self, game),
+			"Health": HealthNotebook(self, game),
 			"Inventory": InventoryTab(self, game),
 			"Memory": MemoryNotebook(self, game),
 		}
 		
 		self.init_tabs()
 		
+class CraftingTab(Tab):
+	def __init__(self, parent, game):
+		super().__init__(parent)
+		
+		self.game = game
+		self.player = game.player
+		
+		self.crafting_professions = {
+			profession.name: profession for profession in game.profession_objs.values() if profession.can_craft
+		}
+		
+		self.profession_var = StringVar()
+		
+		self.crafting_categories_cbx = ttk.Combobox(self, textvariable=self.profession_var, values=list(self.crafting_professions.keys()), state="readonly")
+		self.crafting_categories_cbx.pack()
+		
+		self.crafting_categories_cbx.bind("<<ComboboxSelected>>", self.update_recipes)
+		
+		self.scrollable_fr = ScrollableFrame(self)
+		self.scrollable_fr.pack(fill=BOTH, expand=1)
+		
+		if self.crafting_professions:
+			first_profession = list(self.crafting_professions.keys())[0]
+			
+			self.profession_var.set(first_profession)
+			
+			self.update_recipes()
+	
+	def update_recipes(self, event=None):
+		scr_fr = self.scrollable_fr.scrolling_frame
+		helpf.destroy_children_widgets(scr_fr)
+		
+		profession_name = self.profession_var.get()
+		profession = self.crafting_professions.get(profession_name)
+		
+		if profession is None:
+			return
+			
+		for item_id in profession.outputs:
+			item = self.game.item_type_objs[item_id]
+			
+			btn = ttk.Button(
+				scr_fr,
+				text=item.name,
+			)
+			btn.pack(fill=X)
+	
+class HealthNotebook(CustomNotebook):
+	def __init__(self, parent, game):
+		super().__init__(parent)
+		
+		self.game = game
+		
+		self.tabs = {
+			"Needs": NeedsTab(self, game)
+		}
+		
+		self.init_tabs()
+		
+class NeedsTab(Tab):
+	def __init__(self, parent, game):
+		super().__init__(parent)
+		
+		self.game = game
+		self.player = player = game.player
+		
+		self.scrollable_frame = ScrollableFrame(self)
+		self.scrollable_frame.pack(fill=BOTH, expand=1)
+		
+		self.populate()
+		
+	def populate(self):
+		scr_fr = self.scrollable_frame.scrolling_frame
+		helpf.destroy_children_widgets(scr_fr)
+		
+		for need_id, value in self.player.needs.items():
+			need = self.player.race.needs[need_id]
+			max_value = need["max"]
+			
+			bar = ProgressBar(
+				scr_fr, 
+				value=value, 
+				max_value=max_value, 
+				text=f"{need_id.capitalize()}: {value} / {max_value}"
+			)
+			bar.pack(pady=5)
+	
 class MemoryNotebook(CustomNotebook):
 	def __init__(self, parent, game):
 		super().__init__(parent)
@@ -1058,6 +1230,8 @@ class InventoryTab(Tab):
 		player = self.player
 		scr_fr = self.scrollable_fr.scrolling_frame
 		
+		helpf.destroy_children_widgets(scr_fr)
+		
 		for item_id, quantity in player.inventory.get_items():
 			item = self.game.item_type_objs[item_id]
 			
@@ -1068,7 +1242,8 @@ class InventoryTab(Tab):
 					self.winfo_toplevel(),
 					self.game,
 					item_id,
-					quantity
+					quantity,
+					parent_tab=self,
 				)
 			)
 			btn.pack(fill=X)
@@ -1614,3 +1789,44 @@ class PlayerInventoryGrid(ttk.Treeview):
 			return None
 			
 		return selected[0]
+		
+class ProgressBar(Canvas):
+	def __init__(self, parent, value=100, max_value=100, fill_color="green", text=None):
+		super().__init__(
+			parent, 
+			width=200, 
+			height=20, 
+			highlightbackground="black", 
+			highlightthickness=2
+		)
+		
+		self.value = value
+		
+		self.max_value = max_value
+		
+		self.fill_color = fill_color
+		
+		self.fill_rect = None
+		
+		self.text = text
+		
+		self.bind("<Configure>", self.redraw)
+		
+	def redraw(self, event=None):
+		self.delete("all")
+		
+		width = self.winfo_width()
+		height = self.winfo_height()
+		
+		progress = min(self.value / self.max_value, 1.0)
+		
+		fill_width = int(width * progress)
+		
+		self.fill_rect = self.create_rectangle(0, 0, fill_width, height, fill=self.fill_color, width=0)
+		
+		if not self.text == None:
+			self.create_text(
+				width // 2,
+				height // 2,
+				text=self.text,
+			)

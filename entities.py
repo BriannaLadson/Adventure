@@ -45,11 +45,19 @@ class Game:
 		
 		self.economy = Economy(base_values=base_values)
 		
+		self.entities = []
+		
 	def inc_time(self, ticks=None):
 		if ticks is None:
 			ticks = self.get_turn_ticks(self.player)
 			
+		old_hour = self.calendar.hour
+		old_is_pm = self.calendar.is_pm
+			
 		self.calendar.update(ticks=ticks)
+		
+		if old_hour != self.calendar.hour or old_is_pm != self.calendar.is_pm:
+			self.hourly_update()
 		
 	def get_turn_ticks(self, entity):
 		if entity.is_location_local():
@@ -87,6 +95,13 @@ class Game:
 		
 		entity.gx = random.randint(0, map_size - 1)
 		entity.gy = random.randint(0, map_size - 1)
+		
+	def random_settlement_placement(self, entity):
+		settlement = random.choice(self.settlements)
+		
+		if not settlement == None:
+			entity.gx = settlement.gx
+			entity.gy = settlement.gy
 		
 	def move_entity(self, entity, dir):
 		if entity.lx == None and entity.ly == None:
@@ -236,11 +251,15 @@ class Game:
 		
 	def generate_settlement_professions(self, settlement, race):
 		settlement.professions = {}
+		settlement.races = {}
 		
 		for profession_id, amount_range in race.settlement_professions.items():
 			min_amount, max_amount = amount_range
+			quantity = random.randint(min_amount, max_amount)
 			
-			settlement.professions[profession_id] = random.randint(min_amount, max_amount)
+			settlement.professions[profession_id] = quantity
+			
+			settlement.races[race.id] = settlement.races.get(race.id, 0) + quantity
 	
 	def discover_nearby_locations(self, character):
 		new_locations = []
@@ -262,12 +281,22 @@ class Game:
 		for settlement in self.settlements:
 			settlement.run_production(self)
 			
+	def run_settlement_consumption(self):
+		for settlement in self.settlements:
+			settlement.consume_needs(self)
+			
 	def daily_update(self, calendar=None):
 		if calendar is None:
 			calendar = self.calendar
 		
 		if calendar.hour == 12 and not calendar.is_pm:
 			self.run_settlement_production()
+			self.run_settlement_consumption()
+			
+	def hourly_update(self):
+		for entity in self.entities:
+			if hasattr(entity, "update_needs"):
+				entity.update_needs()
 	
 	def get_discovered_locations_quantity(self, entity):
 		if hasattr(entity, "memory"):
@@ -375,16 +404,50 @@ class Creature(Entity):
 		self.memory = Memory()
 		
 class Character(Creature):
-	def __init__(self):
+	def __init__(self, race):
 		super().__init__()
+		
+		self.race = race
+		
+		self.needs = {
+			need_id: need_data["max"] for need_id, need_data in race.needs.items()
+		}
 		
 		self.gold = 0
 		
 		self.inventory = inventory.Inventory()
 		
+	def update_needs(self):
+		for need_id, need_data in self.race.needs.items():
+			decay = need_data["decay"]
+			
+			self.needs[need_id] -= decay
+			
+			if self.needs[need_id] < 0:
+				self.needs[need_id] = 0
+				
+	def consume_item(self, item_id, game):
+		item = game.item_type_objs[item_id]
+		need_values = getattr(item, "need_values", {})
+		
+		if not need_values:
+			return False
+			
+		if not self.inventory.remove_item(item_id, 1):
+			return False
+			
+		for need_id, amount in need_values.items():
+			if need_id not in self.needs:
+				continue
+				
+			max_value = self.race.needs[need_id]["max"]
+			self.needs[need_id] = min(self.needs[need_id] + amount, max_value)
+			
+		return True
+		
 class Player(Character):
-	def __init__(self):
-		super().__init__()
+	def __init__(self, race):
+		super().__init__(race)
 		
 		self.char = '@'
 		
@@ -468,14 +531,18 @@ class Settlement:
 		
 		self.professions = {}
 		
+		self.races = {}
+		
 		self.sub_economy = sub_economy
 		
 		self.gold = gold
 		
 		self.resources = {
 			"fauna": random.randint(0, 100),
+			"flora": random.randint(0, 100),
 			"mineral": random.randint(0, 100),
 			"trees": random.randint(0, 100),
+			"water": random.randint(0, 100),
 		}
 		
 	def run_production(self, game):
@@ -484,6 +551,42 @@ class Settlement:
 			
 	def get_profession_quantity(self, profession_obj):
 		return self.professions.get(profession_obj.id, 0)
+		
+	def consume_needs(self, game):	
+		for race_id, population in self.races.items():
+			race = game.race_objs[race_id]
+			
+			for need_id in race.needs:
+				item_id = self.get_item_for_need(game, need_id)
+				
+				if item_id is None:
+					continue
+					
+				if self.sub_economy.has_item(item_id, population):
+					self.sub_economy.remove_item(item_id, population)
+					self.sub_economy.change_modifier(item_id, - 1)
+					
+				else:
+					available = self.sub_economy.get_quantity(item_id)
+					
+					if available > 0:
+						self.sub_economy.remove_item(item_id, available)
+						
+					self.sub_economy.change_modifier(item_id, 1)
+					
+	def get_item_for_need(self, game, need_id):
+		valid_items = []
+		
+		for item_id, item in game.item_type_objs.items():
+			need_values = getattr(item, "need_values", {})
+			
+			if need_id in need_values:
+				valid_items.append(item_id)
+				
+		if not valid_items:
+			return None
+			
+		return random.choice(valid_items)
 		
 class TownMapGenerator:
 	def __init__(self, game, settlement, seed, map_size):
@@ -662,6 +765,8 @@ class Race:
 		self.settlement_professions = args[10]
 		
 		self.settlement_gold = args[11]
+		
+		self.needs = args[12]
 		
 	def get_name_system_id(self, name_system_type):
 		name_systems = getattr(self, f"{name_system_type}_name_systems")

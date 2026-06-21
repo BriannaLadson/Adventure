@@ -112,6 +112,7 @@ def load_races(game, data):
 			race_data["settlement_buildings"],
 			race_data["settlement_professions"],
 			race_data["settlement_gold"],
+			race_data["needs"],
 		)
 		
 		race_objs[id] = race_obj

@@ -8,6 +8,8 @@ class Profession:
 		
 		self.outputs = []
 		
+		self.can_craft = True
+		
 	def produce(self, settlement, game):
 		sub_economy = settlement.sub_economy
 		workers = settlement.get_profession_quantity(self)
@@ -46,12 +48,14 @@ class Hunter(Profession):
 		
 		self.name = "Hunter"
 		
+		self.can_craft = False
+		
 	def produce(self, settlement, game):
 		sub_economy = settlement.sub_economy
 		hunters = settlement.get_profession_quantity(self)
 		fauna = settlement.resources["fauna"]
 	
-		animal_corpse_quantity = int(hunters * (fauna / 100))
+		animal_corpse_quantity = int(hunters * (fauna / 100)) * 8
 		
 		sub_economy.add_item("animal_corpse", quantity=animal_corpse_quantity)
 		
@@ -104,8 +108,27 @@ class Butcher(Profession):
 		self.name = "Butcher"
 		
 		self.outputs = [
-			"animal_hide"
+			"animal_hide",
+			"animal_meat",
 		]
+		
+	def produce(self, settlement, game):
+		sub_economy = settlement.sub_economy
+		
+		butchers = settlement.get_profession_quantity(self)
+		
+		for _ in range(butchers):
+			has_corpse = sub_economy.has_item("animal_corpse", 1)
+			
+			if has_corpse:
+				sub_economy.remove_item("animal_corpse", 1)
+				sub_economy.change_modifier("animal_corpse", -1)
+				
+				sub_economy.add_item("animal_hide", 1)
+				sub_economy.add_item("animal_meat", 3)
+				
+			else:
+				sub_economy.change_modifier("animal_corpse", 1)
 		
 class InkMaker(Profession):
 	def __init__(self):
@@ -139,6 +162,8 @@ class TreeCutter(Profession):
 		
 		self.name = "Tree Cutter"
 		
+		self.can_craft = False
+		
 	def produce(self, settlement, game):
 		sub_economy = settlement.sub_economy
 		
@@ -146,7 +171,7 @@ class TreeCutter(Profession):
 		
 		trees = settlement.resources["trees"]
 		
-		wood_quantity = int(tree_cutters * (trees / 100))
+		wood_quantity = int(tree_cutters * (trees / 100)) * 8
 		
 		sub_economy.add_item("wood", quantity=wood_quantity)
 		
@@ -174,13 +199,148 @@ class WoodBurner(Profession):
 			"coal"
 		]
 		
+class Miner(Profession):
+	def __init__(self):
+		super().__init__()
+		
+		self.id = "miner"
+		
+		self.name = "Miner"
+		
+		self.outputs = [
+			"gold_ore",
+		]
+		
+		self.can_craft = False
+		
+	def produce(self, settlement, game):
+		sub_economy = settlement.sub_economy
+		
+		miners = settlement.get_profession_quantity(self)
+		
+		mineral = settlement.resources["mineral"]
+		
+		ore_quantity = int(miners * (mineral / 100))
+		
+		for _ in range(ore_quantity):
+			ore = random.choice(self.outputs)
+			
+			sub_economy.add_item(ore, quantity=1)
+			
+class Smelter(Profession):
+	def __init__(self):
+		super().__init__()
+		
+		self.id = "smelter"
+		
+		self.name = "Smelter"
+		
+		self.outputs = [
+			"gold_bar",
+		]
+			
+class Coinsmith(Profession):
+	def __init__(self):
+		super().__init__()
+		
+		self.id = "coinsmith"
+		
+		self.name = "Coinsmith"
+		
+	def produce(self, settlement, game):
+		sub_economy = settlement.sub_economy
+		
+		coinsmiths = settlement.get_profession_quantity(self)
+		
+		for _ in range(coinsmiths):
+			has_gold_bar = sub_economy.has_item("gold_bar", 1)
+			has_coal = sub_economy.has_item("coal", 1)
+			
+			if has_gold_bar and has_coal:
+				sub_economy.remove_item("gold_bar", 1)
+				sub_economy.remove_item("coal", 1)
+				
+				sub_economy.change_modifier("gold_bar", -1)
+				sub_economy.change_modifier("coal", -1)
+				
+				settlement.gold += 1
+				
+			else:
+				if not has_gold_bar:
+					sub_economy.change_modifier("gold_bar", 1)
+					
+				if not has_coal:
+					sub_economy.change_modifier("coal", 1)
+					
+class WaterCollector(Profession):
+	def __init__(self):
+		super().__init__()
+		
+		self.id = "water_collector"
+		
+		self.name = "Water Collector"
+		
+		self.outputs = [
+			"water"
+		]
+		
+		self.can_craft = False
+		
+	def produce(self, settlement, game):
+		sub_economy = settlement.sub_economy
+		
+		water_collectors = settlement.get_profession_quantity(self)
+		
+		water = settlement.resources["water"]
+		
+		water_quantity = int(water_collectors * (water / 100))
+		
+		sub_economy.add_item("water", quantity=water_quantity)
+		
+class Forager(Profession):
+	def __init__(self):
+		super().__init__()
+		
+		self.id = "forager"
+		
+		self.name = "Forager"
+		
+		self.outputs = [
+			"fruit",
+			"water",
+		]
+		
+		self.can_craft = False
+		
+	def produce(self, settlement, game):
+		sub_economy = settlement.sub_economy
+		
+		foragers = settlement.get_profession_quantity(self)
+		
+		flora = settlement.resources["flora"]
+		water = settlement.resources["water"]
+		
+		chance = int((flora + water) / 2)
+		
+		forage_quantity = int(foragers * chance)
+		
+		for _ in range(forage_quantity):
+			forage_item = random.choice(self.outputs)
+			
+			sub_economy.add_item(forage_item, quantity=1)
+		
 PROFESSIONS = {
 	"hunter": Hunter(),
+	"water_collector": WaterCollector(),
+	"miner": Miner(),
+	"tree_cutter": TreeCutter(),
+	"forager": Forager(),
+	"wood_burner": WoodBurner(),
 	"butcher": Butcher(),
 	"ink_maker": InkMaker(),
 	"tanner": Tanner(),
-	"tree_cutter": TreeCutter(),
 	"paper_maker": PaperMaker(),
-	"wood_burner": WoodBurner(),
 	"cartographer": Cartographer(),
+	"smelter": Smelter(),
+	"coinsmith": Coinsmith(),
 }

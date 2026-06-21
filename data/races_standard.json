@@ -34,8 +34,23 @@
 			"tree_cutter": [0, 100],
 			"paper_maker": [0, 100],
 			"wood_burner": [0, 100],
-			"cartographer": [0, 5]
+			"cartographer": [0, 5],
+			"miner": [0, 100],
+			"smelter": [0, 100],
+			"coinsmith": [0, 100],
+			"water_collector":[0, 100],
+			"forager": [0, 100]
 		},
-		"settlement_gold": [0, 1000]
+		"settlement_gold": [0, 1000],
+		"needs": {
+			"hunger": {
+				"max": 100,
+				"decay": 1
+			},
+			"thirst": {
+				"max": 100,
+				"decay": 1
+			}
+		}
 	}
 }

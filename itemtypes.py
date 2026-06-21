@@ -10,6 +10,8 @@ class ItemType:
 		
 		self.description = ""
 		
+		self.actions = []
+		
 class AnimalCorpse(ItemType):
 	def __init__(self):
 		super().__init__()
@@ -17,6 +19,8 @@ class AnimalCorpse(ItemType):
 		self.id = "animal_corpse"
 		
 		self.name = "Animal Corpse"
+		
+		self.base_value = 2
 		
 class AnimalHide(ItemType):
 	def __init__(self):
@@ -60,6 +64,49 @@ class Coal(ItemType):
 		
 		self.base_value = 2
 		
+class Fruit(ItemType):
+	def __init__(self):
+		super().__init__()
+		
+		self.id = "fruit"
+		
+		self.name = "Fruit"
+		
+		self.need_values = {
+			"hunger": 15,
+		}
+		
+		self.base_value = 2
+		
+		self.actions = [
+			"consume",
+		]
+		
+class GoldBar(ItemType):
+	def __init__(self):
+		super().__init__()
+		
+		self.id = "gold_bar"
+		
+		self.name = "Gold Bar"
+		
+		self.reagents = {
+			"coal": 1,
+			"gold_ore": 1,
+		}
+		
+		self.base_value = 10
+		
+class GoldOre(ItemType):
+	def __init__(self):
+		super().__init__()
+		
+		self.id = "gold_ore"
+		
+		self.name = "Gold Ore"
+		
+		self.base_value = 5
+		
 class Ink(ItemType):
 	def __init__(self):
 		super().__init__()
@@ -74,6 +121,24 @@ class Ink(ItemType):
 		
 		self.base_value = 4
 		
+class AnimalMeat(ItemType):
+	def __init__(self):
+		super().__init__()
+		
+		self.id = "animal_meat"
+		
+		self.name = "Animal Meat"
+		
+		self.need_values = {
+			"hunger": 25,
+		}
+		
+		self.base_value = 3
+		
+		self.actions = [
+			"consume",
+		]
+		
 class Parchment(ItemType):
 	def __init__(self):
 		super().__init__()
@@ -83,6 +148,22 @@ class Parchment(ItemType):
 		self.name = "Parchment"
 		
 		self.base_value = 8
+		
+class Water(ItemType):
+	def __init__(self):
+		super().__init__()
+		
+		self.id = "water"
+		
+		self.name = "Water"
+		
+		self.need_values = {
+			"thirst": 25,
+		}
+		
+		self.actions = [
+			"consume",
+		]
 		
 class Wood(ItemType):
 	def __init__(self):
@@ -96,8 +177,13 @@ ITEM_TYPES = {
 	"animal_corpse": AnimalCorpse(),
 	"animal_hide": AnimalHide(),
 	"animal_leather": AnimalLeather(),
+	"animal_meat": AnimalMeat(),
 	"coal": Coal(),
+	"fruit": Fruit(),
+	"gold_bar": GoldBar(),
+	"gold_ore": GoldOre(),
 	"ink": Ink(),
 	"parchment": Parchment(),
+	"water": Water(),
 	"wood": Wood(),
 }
