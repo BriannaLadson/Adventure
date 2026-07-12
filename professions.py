@@ -12,7 +12,7 @@ class Profession:
 		
 	def produce(self, settlement, game):
 		sub_economy = settlement.sub_economy
-		workers = settlement.get_profession_quantity(self)
+		workers = settlement.get_active_workers(self)
 
 		for _ in range(workers):
 			item_id = random.choice(self.outputs)
@@ -52,10 +52,10 @@ class Hunter(Profession):
 		
 	def produce(self, settlement, game):
 		sub_economy = settlement.sub_economy
-		hunters = settlement.get_profession_quantity(self)
+		hunters = settlement.get_active_workers(self)
 		fauna = settlement.resources["fauna"]
 	
-		animal_corpse_quantity = int(hunters * (fauna / 100)) * 8
+		animal_corpse_quantity = int(hunters * (fauna / 100))
 		
 		sub_economy.add_item("animal_corpse", quantity=animal_corpse_quantity)
 		
@@ -70,7 +70,7 @@ class Cartographer(Profession):
 	def produce(self, settlement, game):
 		sub_economy = settlement.sub_economy
 		
-		cartographers = settlement.get_profession_quantity(self)
+		cartographers = settlement.get_active_workers(self)
 		
 		for i in range(cartographers):
 			parchment_quantity = sub_economy.get_quantity("parchment")
@@ -115,7 +115,7 @@ class Butcher(Profession):
 	def produce(self, settlement, game):
 		sub_economy = settlement.sub_economy
 		
-		butchers = settlement.get_profession_quantity(self)
+		butchers = settlement.get_active_workers(self)
 		
 		for _ in range(butchers):
 			has_corpse = sub_economy.has_item("animal_corpse", 1)
@@ -125,7 +125,7 @@ class Butcher(Profession):
 				sub_economy.change_modifier("animal_corpse", -1)
 				
 				sub_economy.add_item("animal_hide", 1)
-				sub_economy.add_item("animal_meat", 3)
+				sub_economy.add_item("animal_meat", 1)
 				
 			else:
 				sub_economy.change_modifier("animal_corpse", 1)
@@ -167,11 +167,11 @@ class TreeCutter(Profession):
 	def produce(self, settlement, game):
 		sub_economy = settlement.sub_economy
 		
-		tree_cutters = settlement.get_profession_quantity(self)
+		tree_cutters = settlement.get_active_workers(self)
 		
 		trees = settlement.resources["trees"]
 		
-		wood_quantity = int(tree_cutters * (trees / 100)) * 8
+		wood_quantity = int(tree_cutters * (trees / 100))
 		
 		sub_economy.add_item("wood", quantity=wood_quantity)
 		
@@ -216,7 +216,7 @@ class Miner(Profession):
 	def produce(self, settlement, game):
 		sub_economy = settlement.sub_economy
 		
-		miners = settlement.get_profession_quantity(self)
+		miners = settlement.get_active_workers(self)
 		
 		mineral = settlement.resources["mineral"]
 		
@@ -250,7 +250,7 @@ class Coinsmith(Profession):
 	def produce(self, settlement, game):
 		sub_economy = settlement.sub_economy
 		
-		coinsmiths = settlement.get_profession_quantity(self)
+		coinsmiths = settlement.get_active_workers(self)
 		
 		for _ in range(coinsmiths):
 			has_gold_bar = sub_economy.has_item("gold_bar", 1)
@@ -289,7 +289,7 @@ class WaterCollector(Profession):
 	def produce(self, settlement, game):
 		sub_economy = settlement.sub_economy
 		
-		water_collectors = settlement.get_profession_quantity(self)
+		water_collectors = settlement.get_active_workers(self)
 		
 		water = settlement.resources["water"]
 		
@@ -315,19 +315,17 @@ class Forager(Profession):
 	def produce(self, settlement, game):
 		sub_economy = settlement.sub_economy
 		
-		foragers = settlement.get_profession_quantity(self)
+		foragers = settlement.get_active_workers(self)
 		
 		flora = settlement.resources["flora"]
 		water = settlement.resources["water"]
 		
 		chance = int((flora + water) / 2)
 		
-		forage_quantity = int(foragers * chance)
-		
-		for _ in range(forage_quantity):
-			forage_item = random.choice(self.outputs)
-			
-			sub_economy.add_item(forage_item, quantity=1)
+		for _ in range(foragers):
+			if random.randint(1, 100) <= chance:
+				forage_item = random.choice(self.outputs)
+				sub_economy.add_item(forage_item, quantity=1)
 		
 PROFESSIONS = {
 	"hunter": Hunter(),

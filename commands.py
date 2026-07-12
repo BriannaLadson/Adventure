@@ -7,7 +7,17 @@ def process_cmd(event, screen, cmd):
 		
 		cmd_dict[cmd](screen, cmd)
 		
-		game.inc_time()
+		dead_entities = game.inc_time()
+		
+		if game.player in dead_entities:
+			screen.handle_player_death()
+			return
+			
+		low_needs = game.player.get_low_needs()
+		
+		if low_needs:
+			screen.handle_low_needs(low_needs)
+			return
 		
 		new_locations = screen.discover_locations()
 		

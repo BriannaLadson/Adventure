@@ -39,7 +39,7 @@ class StartScreen(Screen):
 		new_game_btn = ttk.Button(fr, text="New Game", command=lambda:EnterSaveNamePopup(root))
 		new_game_btn.pack(side=LEFT)
 		
-		load_game_btn = ttk.Button(fr, text="Load Game")
+		load_game_btn = ttk.Button(fr, text="Load Game", command=lambda:LoadSavePopup(root))
 		load_game_btn.pack(side=LEFT, padx=10)
 		
 		exit_btn = ttk.Button(fr, text="Exit", command=root.destroy)
@@ -263,7 +263,9 @@ class PlayScreen(Screen):
 		location_lbl.pack()
 		
 		#Map
-		self.tile_map = TileMap(self, game, game.overworld_generator)
+		generator, map_type = self.get_current_map_data()
+		
+		self.tile_map = TileMap(self, game, generator, map_type=map_type)
 		self.tile_map.pack(fill=BOTH, expand=1)
 		
 		#Bindings
@@ -290,6 +292,8 @@ class PlayScreen(Screen):
 		
 		root.bind("@", lambda e:CharacterSheetPopup(e, root, game))
 		
+		root.bind("<Escape>", self.open_menu)
+		
 	def update_screen(self):
 		game = self.game
 		player = self.player
@@ -298,49 +302,22 @@ class PlayScreen(Screen):
 		
 		self.location_var.set(f"Location: {game.get_location(player)}")
 		
-		if self.update_tile_map:
-			generator = None
-			map_type = None
+		if not self.update_tile_map:
+			return
 			
-			if player.lx is None:
-				generator = game.overworld_generator
-				map_type = "overworld"
-				
-			else:
-				location = game.location_map[player.gy][player.gx]
-				
-				seed = player.gy * game.world_size + player.gx + 1
-				
-				if isinstance(location, entities.Settlement):
-					generator = entities.TownMapGenerator(
-						game,
-						location,
-						seed,
-						game.local_map_size,
-					)
-					map_type = "local"
-					
-				else:
-					biome_id = game.overworld_generator.get_biome(player.gx, player.gy)["id"]
-				
-					biome = game.biome_objs[biome_id]
-				
-					generator = entities.LocalMapGenerator(biome, seed, game.local_map_size)
-				
-					map_type = "local"
-				
+		generator, map_type = self.get_current_map_data()
+		
+		if map_type == "local":
+			player.lx, player.ly = generator.get_nearest_walkable(
+				player.lx, player.ly,
+			)
 			
-			game.local_generator = generator
-			
-			if map_type == "local":
-				player.lx, player.ly = generator.get_nearest_walkable(player.lx, player.ly)
-			
-			self.tile_map.tiles = []
-			self.tile_map.generator = generator
-			self.tile_map.map_type = map_type
-			self.tile_map.update_map()
-			
-			self.update_tile_map = False
+		self.tile_map.tiles = []
+		self.tile_map.generator = generator
+		self.tile_map.map_type = map_type
+		self.tile_map.update_map()
+		
+		self.update_tile_map = False
 			
 	def update_calendar(self):
 		calendar = self.calendar
@@ -370,6 +347,12 @@ class PlayScreen(Screen):
 			
 		popup.center()
 		
+	def handle_player_death(self):
+		self.can_process_input = False
+		
+		popup = DeathPopup(self.root)
+		popup.center()
+		
 	def check_building_interaction(self):
 		game = self.game
 		player = self.player
@@ -396,6 +379,52 @@ class PlayScreen(Screen):
 			
 		popup = popup_cls(self.root, building)
 		popup.center()
+		
+	def handle_low_needs(self, low_needs):
+		self.can_process_input = False
+		
+		txt = "\n".join(
+			f"Your {need_id} is getting low." for need_id in low_needs
+		)
+		
+		popup = SimplePopup(self.root, txt)
+		popup.center()
+
+	def open_menu(self, event=None):
+		if not self.can_process_input:
+			return
+			
+		self.can_process_input = False
+		
+		popup = MenuPopup(self.root)
+		popup.center()
+		
+	def get_current_map_data(self):
+		game = self.game
+		player = self.player
+		
+		if player.lx is None:
+			return game.overworld_generator, "overworld"
+			
+		location = game.location_map[player.gy][player.gx]
+		seed = player.gy * game.world_size + player.gx + 1
+		
+		if isinstance(location, entities.Settlement):
+			generator = entities.TownMapGenerator(
+				game,
+				location,
+				seed,
+				game.local_map_size,
+			)
+			
+		else:
+			biome_id = game.overworld_generator.get_biome(player.gx, player.gy)["id"]
+			biome = game.biome_objs[biome_id]
+			generator = entities.LocalMapGenerator(biome, seed, game.local_map_size)
+			
+		game.local_generator = generator
+		
+		return generator, "local"
 
 #Popups
 class Popup(Toplevel):
@@ -617,6 +646,17 @@ class ItemPopup(Popup):
 		
 		ttk.Label(self, text=item.description, wraplength=300, justify="center").pack(fill=BOTH, expand=1)
 		
+		# Needs
+		need_values = getattr(item, "need_values", {})
+		
+		if need_values:
+			for need_id, amount in need_values.items():
+				ttk.Label(
+					self,
+					text=f"{need_id.capitalize()}: +{amount}",
+					anchor="center"
+				).pack(fill=X)
+			
 		self.action_funcs = {
 			"consume": self.consume_item,
 		}
@@ -660,7 +700,158 @@ class ItemPopup(Popup):
 			nb.tabs["Health"].tabs["Needs"].populate()
 			
 			self.destroy()
+			
+class DeathPopup(Popup):
+	def __init__(self, root):
+		super().__init__(root)
+		
+		self.game = game = root.game
+		self.player = player = game.player
+		
+		reason = player.get_death_reason()
+		
+		ttk.Label(self, text="You died.", anchor="center").pack(fill=X)
+		
+		if reason is not None:
+			ttk.Label(
+				self,
+				text=f"Cause of Death: {reason.capitalize()}",
+				anchor="center"
+			).pack(fill=X)
+		
+		self.continue_btn = ttk.Button(self, text="Continue", command=self.continue_)
+		self.continue_btn.pack(fill=X)
+		
+	def continue_(self):
+		root = self.root
+		game = root.game
+		player = game.player
+		
+		if player in game.entities:
+			game.entities.remove(player)
+			
+		if hasattr(root, "play_screen"):
+			root.play_screen.destroy()
+		
+		root.character_creation_screen = CharacterCreationScreen(root)
+		root.character_creation_screen.display()
+		
+		self.destroy()
+		
+class MenuPopup(Popup):
+	def __init__(self, root):
+		super().__init__(root)
+		
+		ttk.Label(self, text="Menu", anchor="center").pack(fill=X)
+		
+		exit_btn = ttk.Button(self, text="Save & Exit", command=self.save_and_exit)
+		exit_btn.pack(fill=X)
+		
+		close_btn = ttk.Button(self, text="Close", command=self.close)
+		close_btn.pack(fill=X)
+		
+		self.center()
+		
+	def close(self):
+		root = self.root
+		
+		root.play_screen.can_process_input = True
+		
+		self.destroy()
+		
+	def save_and_exit(self):
+		root = self.root
+		game = root.game
+		
+		helpf.save_data(game.save_path, "game", game)
+		
+		root.start_screen = StartScreen(root)
+		root.start_screen.display()
+		
+		root.play_screen.destroy()
+		
+		self.destroy()
+		
+class LoadSavePopup(Popup):
+	def __init__(self, root):
+		super().__init__(root)
+		
+		self.selected_save = None
+		
+		ttk.Label(self, text="Load Save", anchor="center").pack(fill=X)
+		
+		self.save_scr_lbx = ScrollableListbox(self)
+		self.save_scr_lbx.pack(fill=BOTH, expand=1)
+		
+		self.populate()
+		
+		btn_fr = ttk.Frame(self)
+		btn_fr.pack(fill=X)
+		
+		load_btn = ttk.Button(btn_fr, text="Load", command=self.load)
+		load_btn.pack(side=LEFT, fill=X)
+		
+		close_btn = ttk.Button(btn_fr, text="Close", command=self.destroy)
+		close_btn.pack(side=LEFT, fill=X)
+		
+		self.center()
+		
+	def populate(self):
+		if not os.path.isdir("saves"):
+			return
+			
+		for save_name in os.listdir("saves"):
+			save_path = os.path.join("saves", save_name)
+			
+			if os.path.isdir(save_path):
+				self.save_scr_lbx.insert(END, save_name)
+				
+	def load(self):
+		selected = self.save_scr_lbx.curselection()
+		
+		if not selected:
+			return
+			
+		save_name = self.save_scr_lbx.get(selected[0])
+		
+		root = self.root
+		
+		root.save_path = os.path.join("saves", save_name, "game_data")
+		
+		root.game = helpf.get_data(root.save_path, "game")
+		
+		root.start_screen.hide()
+		
+		root.play_screen = PlayScreen(root)
+		root.play_screen.display()
+		
+		self.destroy()
+
 #Widgets
+class ScrollableListbox(ttk.Frame):
+	def __init__(self, parent):
+		super().__init__(parent)
+		
+		self.listbox = Listbox(self)
+		self.listbox.pack(side=LEFT, fill=BOTH, expand=1)
+		
+		self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.listbox.yview)
+		self.scrollbar.pack(side=RIGHT, fill=Y)
+		
+		self.listbox.configure(yscrollcommand=self.scrollbar.set)
+		
+	def insert(self, *args):
+		return self.listbox.insert(*args)
+		
+	def curselection(self):
+		return self.listbox.curselection()
+		
+	def get(self, *args):
+		return self.listbox.get(*args)
+		
+	def delete(self, *args):
+		return self.listbox.delete(*args)
+
 class WorldSettingsNotebook(ttk.Notebook):
 	def __init__(self, parent, game):
 		super().__init__(parent)
@@ -1199,6 +1390,17 @@ class LocationsTab(Tab):
 		
 		ttk.Label(self, text=f"Discovered Locations: {known_location_quantity} / {location_quantity}", anchor="center").pack(fill=X)
 		
+		self.sort_var = StringVar(value="Name")
+		
+		sort_cbx = ttk.Combobox(
+			self,
+			textvariable=self.sort_var,
+			values=["Name", "Distance"],
+			state="readonly"
+		)
+		sort_cbx.pack(fill=X)
+		sort_cbx.bind("<<ComboboxSelected>>", lambda e:self.populate())
+		
 		self.scrollable_fr = ScrollableFrame(self)
 		self.scrollable_fr.pack(fill=BOTH, expand=1)
 		
@@ -1210,8 +1412,21 @@ class LocationsTab(Tab):
 		
 		helpf.destroy_children_widgets(scr_fr)
 		
-		for location in player.memory.known_locations.values():
-			lbl = ttk.Label(scr_fr, text=f"{location.name} ({location.gx},{location.gy})", anchor="center")
+		locations = list(player.memory.known_locations.values())
+		
+		if self.sort_var.get() == "Name":
+			locations.sort(key=lambda location: location.name)
+			
+		elif self.sort_var.get() == "Distance":
+			locations.sort(
+				key=lambda location: abs(location.gx - player.gx) + abs(location.gy - player.gy)
+			)
+			
+		for location in locations:
+			lbl = ttk.Label(
+				scr_fr,
+				text=f"{location.name} ({location.gx},{location.gy})"
+			)
 			lbl.pack(fill=X)
 			
 class InventoryTab(Tab):

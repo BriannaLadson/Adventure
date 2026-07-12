@@ -3,6 +3,8 @@ import numpy as np
 from terraforge import TownForge
 from dyecon import Economy, SubEconomy
 
+import time
+
 import helpfunctions as helpf
 import professions
 import itemtypes
@@ -57,7 +59,9 @@ class Game:
 		self.calendar.update(ticks=ticks)
 		
 		if old_hour != self.calendar.hour or old_is_pm != self.calendar.is_pm:
-			self.hourly_update()
+			return self.hourly_update()
+			
+		return []
 		
 	def get_turn_ticks(self, entity):
 		if entity.is_location_local():
@@ -291,12 +295,21 @@ class Game:
 		
 		if calendar.hour == 12 and not calendar.is_pm:
 			self.run_settlement_production()
-			self.run_settlement_consumption()
+			
+			#self.run_settlement_consumption()
 			
 	def hourly_update(self):
+		dead_entities = []
+		
 		for entity in self.entities:
 			if hasattr(entity, "update_needs"):
 				entity.update_needs()
+				
+			if hasattr(entity, "is_dead"):
+				if entity.is_dead():
+					dead_entities.append(entity)
+					
+		return dead_entities
 	
 	def get_discovered_locations_quantity(self, entity):
 		if hasattr(entity, "memory"):
@@ -413,9 +426,15 @@ class Character(Creature):
 			need_id: need_data["max"] for need_id, need_data in race.needs.items()
 		}
 		
+		self.need_warnings = {
+			need_id: False for need_id in self.needs
+		}
+		
 		self.gold = 0
 		
 		self.inventory = inventory.Inventory()
+		
+		self.alive = True
 		
 	def update_needs(self):
 		for need_id, need_data in self.race.needs.items():
@@ -444,6 +463,33 @@ class Character(Creature):
 			self.needs[need_id] = min(self.needs[need_id] + amount, max_value)
 			
 		return True
+		
+	def is_dead(self):
+		for value in self.needs.values():
+			if value <= 0:
+				return True
+				
+		return False
+		
+	def get_death_reason(self):
+		for need_id, value in self.needs.items():
+			if value <= 0:
+				return need_id
+				
+		return None
+		
+	def get_low_needs(self, threshold=25):
+		low_needs = []
+		
+		for need_id, value in self.needs.items():
+			if value <= threshold and not self.need_warnings.get(need_id, False):
+				low_needs.append(need_id)
+				self.need_warnings[need_id] = True
+				
+			elif value > threshold:
+				self.need_warnings[need_id] = False
+				
+		return low_needs
 		
 class Player(Character):
 	def __init__(self, race):
@@ -551,6 +597,14 @@ class Settlement:
 			
 	def get_profession_quantity(self, profession_obj):
 		return self.professions.get(profession_obj.id, 0)
+		
+	def get_active_workers(self, profession_obj):
+		workers = self.get_profession_quantity(profession_obj)
+		
+		if workers <= 0:
+			return 0
+			
+		return random.randint(1, workers)
 		
 	def consume_needs(self, game):	
 		for race_id, population in self.races.items():
