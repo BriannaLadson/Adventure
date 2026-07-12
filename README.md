@@ -1,4 +1,4 @@
-# Adventure v0.8.0
+# Adventure v0.9.1
 
 Adventure is a sandbox RPG simulation built using Python and Tkinter.
 
@@ -260,16 +260,6 @@ Current dependencies include:
 * [CQCalendar](https://github.com/BriannaLadson/CQCalendar): A customizable, tick-based time and calendar system for Python games and simulations.
 * [TerraForge](https://github.com/BriannaLadson/TerraForge): TerraForge is a versatile Python toolset for procedural map generation.
 * [DyEcon](https://github.com/BriannaLadson/DyEcon): A lightweight dynamic economy simulation library for Python games and simulations.
-
-## Support Development
-
-Adventure is actively developed, with new systems and features being added regularly.
-
-The version available in this repository represents the current public release. New features are typically developed and tested in private builds before they are merged into the public version.
-
-If you'd like to support the project and gain access to newer versions sooner, consider joining the Patreon.
-
-[Patreon](https://patreon.com/BLCodes) supporters receive early access to development builds and source code updates, allowing them to explore new systems and features before they are released publicly.
 
 ## License
 
