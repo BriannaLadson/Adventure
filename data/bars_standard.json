@@ -1,0 +1,18 @@
+{
+	"gold_bar": {
+		"name": "Gold Bar",
+		"reagents": {
+			"coal": 1,
+			"gold_ore": 1
+		},
+		"base_value": 10
+	},
+	"platinum_bar": {
+		"name": "Platinum Bar",
+		"reagents": {
+			"coal": 1,
+			"platinum_ore": 1
+		},
+		"base_value": 20
+	}
+}

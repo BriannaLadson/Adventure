@@ -3,6 +3,7 @@ import os
 from cqcalendar import CQCalendar
 
 import entities
+import itemtypes
 
 def load_data(game, data_path="data"):
 	for file in os.listdir(data_path):
@@ -56,7 +57,27 @@ def load_calendar(game, data):
 	
 	calendar.on_day(game.daily_update)
 
-#Other	
+#Other
+def load_bars(game, data):
+	bar_objs = {}
+	
+	for bar in data:
+		id = bar
+		
+		bar_data = data[bar]
+		
+		bar_obj = itemtypes.BarType(
+			id,
+			bar_data["name"],
+			bar_data["reagents"],
+			bar_data["base_value"],
+		)
+		
+		bar_objs[id] = bar_obj
+		game.item_type_objs[id] = bar_obj
+	
+	game.bar_objs = bar_objs
+
 def load_biome_objs(game):
 	biome_objs = {}
 	
@@ -72,6 +93,26 @@ def load_biome_objs(game):
 		biome_objs[id] = biome_obj
 		
 	game.biome_objs = biome_objs
+	
+def load_coins(game, data):
+	coin_objs = {}
+	
+	for coin in data:
+		id = coin
+		
+		coin_data = data[coin]
+		
+		coin_obj = itemtypes.CoinType(
+			id,
+			coin_data["name"],
+			coin_data["reagents"],
+			coin_data["base_value"],
+		)
+		
+		coin_objs[id] = coin_obj
+		game.item_type_objs[id] = coin_obj
+		
+	game.coin_objs = coin_objs
 	
 def load_name_systems(game, data):
 	name_system_objs = {}
@@ -90,6 +131,25 @@ def load_name_systems(game, data):
 		name_system_objs[id] = name_system_obj
 		
 	game.name_system_objs = name_system_objs
+	
+def load_ores(game, data):
+	ore_objs = {}
+	
+	for ore in data:
+		id = ore
+		
+		ore_data = data[ore]
+		
+		ore_obj = itemtypes.OreType(
+			id,
+			ore_data["name"],
+			ore_data["base_value"],
+		)
+		
+		ore_objs[id] = ore_obj
+		game.item_type_objs[id] = ore_obj
+	
+	game.ore_objs = ore_objs
 	
 def load_races(game, data):
 	race_objs = {}
@@ -111,7 +171,8 @@ def load_races(game, data):
 			race_data["settlement_name_systems"],
 			race_data["settlement_buildings"],
 			race_data["settlement_professions"],
-			race_data["settlement_gold"],
+			race_data["currency"],
+			race_data["settlement_currency"],
 			race_data["needs"],
 		)
 		
@@ -120,6 +181,9 @@ def load_races(game, data):
 	game.race_objs = race_objs
 	
 PREFIX_LOADERS = {
+	"bars_": load_bars,
+	"coins_": load_coins,
 	"namesystems_": load_name_systems,
+	"ores_": load_ores,
 	"races_": load_races,
 }

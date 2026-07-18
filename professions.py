@@ -129,6 +129,18 @@ class Butcher(Profession):
 				
 			else:
 				sub_economy.change_modifier("animal_corpse", 1)
+				
+class Brewer(Profession):
+	def __init__(self):
+		super().__init__()
+		
+		self.id = "brewer"
+		
+		self.name = "Brewer"
+		
+		self.outputs = [
+			"wine",
+		]
 		
 class InkMaker(Profession):
 	def __init__(self):
@@ -207,9 +219,7 @@ class Miner(Profession):
 		
 		self.name = "Miner"
 		
-		self.outputs = [
-			"gold_ore",
-		]
+		self.outputs = []
 		
 		self.can_craft = False
 		
@@ -223,7 +233,7 @@ class Miner(Profession):
 		ore_quantity = int(miners * (mineral / 100))
 		
 		for _ in range(ore_quantity):
-			ore = random.choice(self.outputs)
+			ore = random.choice(list(game.ore_objs.keys()))
 			
 			sub_economy.add_item(ore, quantity=1)
 			
@@ -235,9 +245,38 @@ class Smelter(Profession):
 		
 		self.name = "Smelter"
 		
-		self.outputs = [
-			"gold_bar",
-		]
+		self.outputs = []
+		
+	def produce(self, settlement, game):
+		sub_economy = settlement.sub_economy
+		
+		smelters = settlement.get_active_workers(self)
+		
+		bar_ids = list(game.bar_objs.keys())
+		
+		if not bar_ids:
+			return
+		
+		for _ in range(smelters):
+			bar_id = random.choice(bar_ids)
+			bar_obj = game.bar_objs[bar_id]
+			reagents = getattr(bar_obj, "reagents", {})
+			
+			can_make = all(
+				sub_economy.has_item(reagent_id, amount) for reagent_id, amount in reagents.items()
+			)
+			
+			if can_make:
+				for reagent_id, amount in reagents.items():
+					sub_economy.remove_item(reagent_id, amount)
+					sub_economy.change_modifier(reagent_id, -amount)
+					
+				sub_economy.add_item(bar_id, 1)
+				
+			else:
+				for reagent_id, amount in reagents.items():
+					if not sub_economy.has_item(reagent_id, amount):
+						sub_economy.change_modifier(reagent_id, amount)
 			
 class Coinsmith(Profession):
 	def __init__(self):
@@ -252,25 +291,30 @@ class Coinsmith(Profession):
 		
 		coinsmiths = settlement.get_active_workers(self)
 		
-		for _ in range(coinsmiths):
-			has_gold_bar = sub_economy.has_item("gold_bar", 1)
-			has_coal = sub_economy.has_item("coal", 1)
+		coin_id = settlement.civilization.culture.currency
+		
+		if coin_id not in game.coin_objs:
+			return
 			
-			if has_gold_bar and has_coal:
-				sub_economy.remove_item("gold_bar", 1)
-				sub_economy.remove_item("coal", 1)
-				
-				sub_economy.change_modifier("gold_bar", -1)
-				sub_economy.change_modifier("coal", -1)
-				
-				settlement.gold += 1
+		coin_obj = game.coin_objs[coin_id]
+		reagents = getattr(coin_obj, "reagents", {})
+		
+		for _ in range(coinsmiths):
+			can_make = all(
+				sub_economy.has_item(reagent_id, amount) for reagent_id, amount in reagents.items()
+			)
+			
+			if can_make:
+				for reagent_id, amount in reagents.items():
+					sub_economy.remove_item(reagent_id, amount)
+					sub_economy.change_modifier(reagent_id, -amount)
+					
+				settlement.wallet.add_coins(coin_id, 1)
 				
 			else:
-				if not has_gold_bar:
-					sub_economy.change_modifier("gold_bar", 1)
-					
-				if not has_coal:
-					sub_economy.change_modifier("coal", 1)
+				for reagent_id, amount in reagents.items():
+					if not sub_economy.has_item(reagent_id, amount):
+						sub_economy.change_modifier(reagent_id, amount)
 					
 class WaterCollector(Profession):
 	def __init__(self):
@@ -341,4 +385,5 @@ PROFESSIONS = {
 	"cartographer": Cartographer(),
 	"smelter": Smelter(),
 	"coinsmith": Coinsmith(),
+	"brewer": Brewer(),
 }

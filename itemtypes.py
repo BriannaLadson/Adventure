@@ -12,6 +12,40 @@ class ItemType:
 		
 		self.actions = []
 		
+class BarType(ItemType):
+	def __init__(self, *args):
+		super().__init__()
+		
+		self.id = args[0]
+		
+		self.name = args[1]
+		
+		self.reagents = args[2]
+		
+		self.base_value = args[3]
+		
+class CoinType(ItemType):
+	def __init__(self, *args):
+		super().__init__()
+		
+		self.id = args[0]
+		
+		self.name = args[1]
+		
+		self.reagents = args[2]
+		
+		self.base_value = args[3]
+		
+class OreType(ItemType):
+	def __init__(self, *args):
+		super().__init__()
+		
+		self.id = args[0]
+		
+		self.name = args[1]
+		
+		self.base_value = args[2]
+		
 class AnimalCorpse(ItemType):
 	def __init__(self):
 		super().__init__()
@@ -82,31 +116,6 @@ class Fruit(ItemType):
 			"consume",
 		]
 		
-class GoldBar(ItemType):
-	def __init__(self):
-		super().__init__()
-		
-		self.id = "gold_bar"
-		
-		self.name = "Gold Bar"
-		
-		self.reagents = {
-			"coal": 1,
-			"gold_ore": 1,
-		}
-		
-		self.base_value = 10
-		
-class GoldOre(ItemType):
-	def __init__(self):
-		super().__init__()
-		
-		self.id = "gold_ore"
-		
-		self.name = "Gold Ore"
-		
-		self.base_value = 5
-		
 class Ink(ItemType):
 	def __init__(self):
 		super().__init__()
@@ -165,6 +174,28 @@ class Water(ItemType):
 			"consume",
 		]
 		
+class Wine(ItemType):
+	def __init__(self):
+		super().__init__()
+		
+		self.id = "wine"
+		
+		self.name = "Wine"
+		
+		self.base_value = 10
+		
+		self.reagents = {
+			"fruit": 1,
+		}
+		
+		self.need_values = {
+			"alcohol": 25,
+		}
+		
+		self.actions = [
+			"consume",
+		]
+		
 class Wood(ItemType):
 	def __init__(self):
 		super().__init__()
@@ -180,10 +211,9 @@ ITEM_TYPES = {
 	"animal_meat": AnimalMeat(),
 	"coal": Coal(),
 	"fruit": Fruit(),
-	"gold_bar": GoldBar(),
-	"gold_ore": GoldOre(),
 	"ink": Ink(),
 	"parchment": Parchment(),
 	"water": Water(),
+	"wine": Wine(),
 	"wood": Wood(),
 }

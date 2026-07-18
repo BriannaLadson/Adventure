@@ -171,6 +171,27 @@ class CharacterCreationScreen(Screen):
 		race_cbx = ttk.Combobox(race_fr, textvariable=self.race_var, values=list(self.race_options.keys()), state="readonly")
 		race_cbx.pack()
 		
+		#Starting Currency
+		start_currency_fr = ttk.Frame(scr_fr)
+		start_currency_fr.pack(pady=5)
+		
+		start_currency_lbl = ttk.Label(start_currency_fr, text="Starting Currency", anchor="center")
+		start_currency_lbl.grid(row=0, column=0, columnspan=2, sticky="we")
+		
+		self.currency_options = {
+			currency.name: currency for currency in self.game.coin_objs.values()
+		}
+		
+		self.currency_var = StringVar(value=list(self.currency_options.keys())[0])
+		
+		currency_cbx = ttk.Combobox(start_currency_fr, textvariable=self.currency_var, values=list(self.currency_options.keys()), state="readonly")
+		currency_cbx.grid(row=1, column=0, padx=5)
+		
+		self.currency_quantity_var = StringVar(value=100)
+		
+		currency_quantity_ent = ttk.Entry(start_currency_fr, textvariable=self.currency_quantity_var)
+		currency_quantity_ent.grid(row=1, column=1)
+		
 		#Starting Location
 		start_loc_fr = ttk.Frame(scr_fr)
 		start_loc_fr.pack(pady=5)
@@ -179,12 +200,29 @@ class CharacterCreationScreen(Screen):
 		start_loc_lbl.pack()
 		
 		self.start_loc_var = StringVar(value="Random")
+		self.start_loc_var.trace_add("write", self.trace)
 		
 		start_loc_cbx = ttk.Combobox(start_loc_fr, textvariable=self.start_loc_var, values=["Random", "Random Settlement"], state="readonly")
 		start_loc_cbx.pack()
 		
-		self.continue_btn = ttk.Button(self, text="Continue", command=self.continue_)
+		self.continue_btn = ttk.Button(self, text="Continue", command=self.continue_, state=DISABLED)
 		self.continue_btn.pack(fill=X)
+		
+		self.trace()
+		
+	def trace(self, *args):
+		state=NORMAL
+		
+		try:
+			value = int(self.currency_quantity_var.get())
+			
+			if value < 0:
+				raise ValueError
+		
+		except ValueError:
+			state=DISABLED
+		
+		self.continue_btn.config(state=state)
 		
 	def continue_(self):
 		root = self.root
@@ -194,6 +232,14 @@ class CharacterCreationScreen(Screen):
 		race = self.race_options[race_name]
 		
 		player = game.player = entities.Player(race)
+		
+		#Currency
+		currency_name = self.currency_var.get()
+		currency = self.currency_options[currency_name]
+		
+		currency_quantity = int(self.currency_quantity_var.get())
+		
+		player.wallet.add_coins(currency.id, currency_quantity)
 		
 		#Initial Placement
 		if self.start_loc_var.get() == "Random":
@@ -269,6 +315,8 @@ class PlayScreen(Screen):
 		self.tile_map.pack(fill=BOTH, expand=1)
 		
 		#Bindings
+		root.protocol("WM_DELETE_WINDOW", self.open_menu)
+		
 		root.bind("<+>", self.tile_map.zoom_in)
 		root.bind("<minus>", self.tile_map.zoom_out)
 		
@@ -491,6 +539,7 @@ class EnterSaveNamePopup(Popup):
 			root.game = game = entities.Game(root.save_path)
 			
 			dataparsing.load_data(game)
+			game.init_economy()
 			
 			root.world_generation_screen = WorldGenerationScreen(root)
 			root.world_generation_screen.display()
@@ -544,6 +593,7 @@ class OverwriteSavePopup(Popup):
 			root.game = game = entities.Game(root.save_path)
 			
 			dataparsing.load_data(game)
+			game.init_economy()
 			
 			root.world_generation_screen = WorldGenerationScreen(root)
 			root.world_generation_screen.display()
@@ -589,11 +639,17 @@ class TradePopup(Popup):
 		
 		sub_economy = settlement.sub_economy
 		
-		self.settlement_gold_var = StringVar(value=f"{building.get_name()} (Gold: {settlement.gold})")	
-		ttk.Label(self, textvariable=self.settlement_gold_var, anchor="center").pack(fill=X)
+		self.currency_type = currency_type = settlement.currency
+		self.currency_name = currency_name = game.coin_objs[currency_type].name
+		self.settlement_currency_quantity = settlement_currency_quantity = settlement.wallet.get_quantity(currency_type)
 		
-		self.player_gold_var = StringVar(value=f"You (Gold: {player.gold})")
-		ttk.Label(self, textvariable=self.player_gold_var, anchor="center").pack(fill=X)
+		self.settlement_currency_var = StringVar(value=f"{building.get_name()} ({currency_name}: {settlement_currency_quantity})")	
+		ttk.Label(self, textvariable=self.settlement_currency_var, anchor="center").pack(fill=X)
+		
+		self.player_currency_quantity = player_currency_quantity = player.wallet.get_quantity(currency_type)
+		
+		self.player_currency_var = StringVar(value=f"You ({currency_name}: {player_currency_quantity})")
+		ttk.Label(self, textvariable=self.player_currency_var, anchor="center").pack(fill=X)
 		
 		self.trade_nb = TradeNotebook(self, root, building)
 		self.trade_nb.pack(fill=BOTH, expand=1)
@@ -607,8 +663,16 @@ class TradePopup(Popup):
 		self.destroy()
 		
 	def update_popup(self):
-		self.settlement_gold_var.set(f"{self.building.get_name()} (Gold: {self.settlement.gold})")
-		self.player_gold_var.set(f"You (Gold: {self.player.gold})")
+		settlement = self.settlement
+		player = self.player
+		currency_type = self.currency_type
+		currency_name = self.currency_name
+		
+		self.settlement_currency_quantity = settlement_currency_quantity = settlement.wallet.get_quantity(currency_type)
+		self.player_currency_quantity = player_currency_quantity = player.wallet.get_quantity(currency_type)
+		
+		self.settlement_currency_var.set(f"{self.building.get_name()} ({currency_name}: {settlement_currency_quantity})")
+		self.player_currency_var.set(f"You ({currency_name}: {player_currency_quantity})")
 		
 class CharacterSheetPopup(Popup):
 	def __init__(self, event, root, game):
@@ -696,7 +760,10 @@ class ItemPopup(Popup):
 			sheet = self.parent_tab.winfo_toplevel()
 			nb = sheet.character_sheet_nb
 			
-			nb.tabs["Inventory"].populate()
+			inventory_notebook = nb.tabs["Inventory"]
+			inventory_notebook.tabs["Items"].populate()
+			
+			
 			nb.tabs["Health"].tabs["Needs"].populate()
 			
 			self.destroy()
@@ -764,6 +831,8 @@ class MenuPopup(Popup):
 		game = root.game
 		
 		helpf.save_data(game.save_path, "game", game)
+		
+		root.protocol("WM_DELETE_WINDOW", root.destroy)
 		
 		root.start_screen = StartScreen(root)
 		root.start_screen.display()
@@ -1275,7 +1344,7 @@ class CharacterSheetNotebook(CustomNotebook):
 		self.tabs = {
 			"Crafting": CraftingTab(self, game),
 			"Health": HealthNotebook(self, game),
-			"Inventory": InventoryTab(self, game),
+			"Inventory": InventoryNotebook(self, game),
 			"Memory": MemoryNotebook(self, game),
 		}
 		
@@ -1429,7 +1498,18 @@ class LocationsTab(Tab):
 			)
 			lbl.pack(fill=X)
 			
-class InventoryTab(Tab):
+class InventoryNotebook(CustomNotebook):
+	def __init__(self, parent, game):
+		super().__init__(parent)
+		
+		self.tabs = {
+			"Items": ItemsTab(self, game),
+			"Wallet": WalletTab(self, game),
+		}
+		
+		self.init_tabs()
+		
+class ItemsTab(Tab):
 	def __init__(self, parent, game):
 		super().__init__(parent)
 		
@@ -1462,7 +1542,33 @@ class InventoryTab(Tab):
 				)
 			)
 			btn.pack(fill=X)
-
+			
+class WalletTab(Tab):
+	def __init__(self, parent, game):
+		super().__init__(parent)
+		
+		
+		self.game = game
+		self.player = player = game.player
+		
+		self.scrollable_fr = ScrollableFrame(self)
+		self.scrollable_fr.pack(fill=BOTH, expand=1)
+		
+		self.populate()
+		
+	def populate(self):
+		game = self.game
+		player = self.player
+		wallet = player.wallet
+		scr_fr = self.scrollable_fr.scrolling_frame
+		
+		helpf.destroy_children_widgets(scr_fr)
+		
+		for key, val in wallet.coins.items():
+			currency_name = game.coin_objs[key].name
+			
+			lbl = ttk.Label(scr_fr, text=f"{currency_name}: {val}", anchor="center")
+			lbl.pack(fill=X)
 
 #Other Widgets		
 class ScrollableFrame(ttk.Frame):

@@ -1,0 +1,18 @@
+{
+	"gold_coin": {
+		"name": "Gold Coin",
+		"reagents": {
+			"coal": 1,
+			"gold_bar": 1
+		},
+		"base_value": 1
+	},
+	"platinum_coin": {
+		"name": "Platinum Coin",
+		"reagents": {
+			"coal": 1,
+			"platinum_bar": 1
+		},
+		"base_value": 1
+	}
+}

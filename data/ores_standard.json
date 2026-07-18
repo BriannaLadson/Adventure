@@ -1,0 +1,10 @@
+{
+	"gold_ore": {
+		"name": "Gold Ore",
+		"base_value": 5
+	},
+	"platinum_ore": {
+		"name": "Platinum Ore",
+		"base_value": 10
+	}
+}

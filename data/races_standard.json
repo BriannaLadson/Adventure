@@ -14,7 +14,7 @@
 			"hotlands",
 			"highlands"
 		],
-		"settlement_char": "T",
+		"settlement_char": "H",
 		"settlement_char_color": "#000000",
 		"settlement_name_systems": [
 			"human_settlement_names"
@@ -39,15 +39,73 @@
 			"smelter": [0, 100],
 			"coinsmith": [0, 100],
 			"water_collector":[0, 100],
-			"forager": [0, 100]
+			"forager": [0, 100],
+			"brewer": [0, 30]
 		},
-		"settlement_gold": [0, 1000],
+		"currency": "gold_coin",
+		"settlement_currency": [0, 1000],
 		"needs": {
 			"hunger": {
 				"max": 100,
 				"decay": 1
 			},
 			"thirst": {
+				"max": 100,
+				"decay": 1
+			}
+		}
+	},
+	"dwarf": {
+		"name": "Dwarf",
+		"civilization_number": 20,
+		"civilization_name_systems": [
+			"dwarf_civilization_names"
+		],
+		"settlement_number": 10,
+		"settlement_biomes": [
+			"lowlands",
+			"wetlands",
+			"drylands",
+			"coldlands",
+			"hotlands",
+			"highlands"
+		],
+		"settlement_char": "D",
+		"settlement_char_color": "#000000",
+		"settlement_name_systems": [
+			"dwarf_settlement_names"
+		],
+		"settlement_buildings": {
+			"market_building": {
+				"min_quantity": 1,
+				"max_quantity": 1,
+				"priority": 100
+			}
+		},
+		"settlement_professions": {
+			"hunter": [0, 50],
+			"butcher": [0, 50],
+			"ink_maker": [0, 50],
+			"tanner": [0, 50],
+			"tree_cutter": [0, 50],
+			"paper_maker": [0, 50],
+			"wood_burner": [0, 50],
+			"cartographer": [0, 2],
+			"miner": [50, 100],
+			"smelter": [50, 100],
+			"coinsmith": [50, 100],
+			"water_collector":[0, 50],
+			"forager": [0, 50],
+			"brewer": [20, 60]
+		},
+		"currency": "platinum_coin",
+		"settlement_currency": [0, 1000],
+		"needs": {
+			"hunger": {
+				"max": 100,
+				"decay": 1
+			},
+			"alcohol": {
 				"max": 100,
 				"decay": 1
 			}

@@ -38,16 +38,17 @@ class Game:
 		
 		self.profession_objs = professions.PROFESSIONS
 		
-		self.item_type_objs = itemtypes.ITEM_TYPES
+		self.item_type_objs = itemtypes.ITEM_TYPES.copy()
 		
+		self.entities = []
+		
+	def init_economy(self):
 		base_values = {}
 		
 		for key, val in self.item_type_objs.items():
 			base_values[key] = val.base_value
-		
+			
 		self.economy = Economy(base_values=base_values)
-		
-		self.entities = []
 		
 	def inc_time(self, ticks=None):
 		if ticks is None:
@@ -212,7 +213,7 @@ class Game:
 		
 		self.civilizations.append(civilization)
 			
-	def generate_settlement(self, race):
+	def generate_settlement(self, civilization, race):
 		map_size = self.world_size
 	
 		gx = random.randint(0, map_size - 1)
@@ -233,17 +234,18 @@ class Game:
 		settlement_name = self.name_system_objs[settlement_name_system_id].get_name()
 		
 		sub_economy = SubEconomy(self.economy)
-		gold = random.randint(race.settlement_gold[0], race.settlement_gold[1])
 		
 		settlement = Settlement(
-			gx, gy, 
+			gx, gy,
+			civilization,
 			settlement_char, 
 			settlement_char_color,
 			settlement_name,
 			race.settlement_buildings,
 			sub_economy,
-			gold,
 		)
+		
+		settlement.set_start_currency()
 			
 		self.settlements.append(settlement)
 		
@@ -320,36 +322,40 @@ class Game:
 		return 0
 		
 	def buy_item(self, buyer, settlement, item_id, quantity=1):
+		sub_economy = settlement.sub_economy
+		currency = settlement.currency
+		
 		price = settlement.sub_economy.get_value(item_id) * quantity
-		
-		if buyer.gold < price:
+			
+		if not sub_economy.has_item(item_id, quantity):
 			return False
 			
-		if not settlement.sub_economy.has_item(item_id, quantity):
+		if not buyer.wallet.remove_coins(currency, price):
 			return False
 			
-		buyer.gold -= price
-		settlement.gold += price
+		settlement.wallet.add_coins(currency, price)
 		
-		settlement.sub_economy.remove_item(item_id, quantity)
+		sub_economy.remove_item(item_id, quantity)
 		buyer.inventory.add_item(item_id, quantity)
 		
 		return True
 	
 	def sell_item(self, seller, settlement, item_id, quantity=1):
+		sub_economy = settlement.sub_economy
+		currency = settlement.currency
+		
 		price = settlement.sub_economy.get_value(item_id) * quantity
 		
 		if not seller.inventory.remove_item(item_id, quantity):
 			return False
 			
-		if settlement.gold < price:
+		if not settlement.wallet.remove_coins(currency, price):
 			seller.inventory.add_item(item_id, quantity)
 			return False
 			
-		seller.gold += price
-		settlement.gold -= price
+		seller.wallet.add_coins(currency, price)
 		
-		settlement.sub_economy.add_item(item_id, quantity)
+		sub_economy.add_item(item_id, quantity)
 		
 		return True
 		
@@ -430,7 +436,7 @@ class Character(Creature):
 			need_id: False for need_id in self.needs
 		}
 		
-		self.gold = 0
+		self.wallet = Wallet()
 		
 		self.inventory = inventory.Inventory()
 		
@@ -496,10 +502,6 @@ class Player(Character):
 		super().__init__(race)
 		
 		self.char = '@'
-		
-		self.gold = 100 #For Testing Only. Remove Later!
-
-
 
 #Map
 class Building:
@@ -558,9 +560,11 @@ class LocalMapGenerator:
 		return x,y
 		
 class Settlement:
-	def __init__(self, gx, gy, char, char_color, name="Settlement", building_rules=None, sub_economy=None, gold=0):
+	def __init__(self, gx, gy, civ, char, char_color, name="Settlement", building_rules=None, sub_economy=None):
 		self.gx = gx
 		self.gy = gy
+		
+		self.civilization = civ
 		
 		self.char = char
 		
@@ -581,7 +585,9 @@ class Settlement:
 		
 		self.sub_economy = sub_economy
 		
-		self.gold = gold
+		self.wallet = Wallet()
+		
+		self.currency = civ.culture.currency
 		
 		self.resources = {
 			"fauna": random.randint(0, 100),
@@ -641,6 +647,18 @@ class Settlement:
 			return None
 			
 		return random.choice(valid_items)
+		
+	def set_start_currency(self):
+		culture = self.civilization.culture
+		
+		currency = culture.currency
+		
+		min_coins = culture.settlement_currency[0]
+		max_coins = culture.settlement_currency[1]
+		
+		coins = random.randint(min_coins, max_coins)
+		
+		self.wallet.add_coins(currency, coins)
 		
 class TownMapGenerator:
 	def __init__(self, game, settlement, seed, map_size):
@@ -760,12 +778,59 @@ class Civilization:
 		self.settlements = []
 		
 		self.name = name
+		
+		self.currency = culture.currency
 
 
 #Other
 class Memory:
 	def __init__(self):
 		self.known_locations = {}
+
+class Wallet:
+	def __init__(self, coins=None):
+		if coins is None:
+			coins = {}
+			
+		self.coins = coins
+		
+	def get_quantity(self, coin_id):
+		return self.coins.get(coin_id, 0)
+		
+	def set_quantity(self, coin_id, quantity):
+		if quantity <= 0:
+			self.coins.pop(coin_id, None)
+			
+		else:
+			self.coins[coin_id] = quantity
+			
+	def add_coins(self, coin_id, quantity=1):
+		self.coins[coin_id] = self.get_quantity(coin_id) + quantity
+		
+		return True
+		
+	def remove_coins(self, coin_id, quantity=1):
+		if self.get_quantity(coin_id) < quantity:
+			return False
+			
+		self.coins[coin_id] -= quantity
+		
+		if self.coins[coin_id] <= 0:
+			del self.coins[coin_id]
+			
+		return True
+		
+	def has_coins(self, coin_id, quantity=1):
+		return self.get_quantity(coin_id) >= quantity
+		
+	def get_coins(self):
+		return self.coins.items()
+		
+	def get_coin_ids(self):
+		return self.coins.keys()
+		
+	def clear(self):
+		self.coins.clear()
 
 #Json Objects		
 class Biome:
@@ -818,9 +883,11 @@ class Race:
 		
 		self.settlement_professions = args[10]
 		
-		self.settlement_gold = args[11]
+		self.currency = args[11]
 		
-		self.needs = args[12]
+		self.settlement_currency = args[12]
+		
+		self.needs = args[13]
 		
 	def get_name_system_id(self, name_system_type):
 		name_systems = getattr(self, f"{name_system_type}_name_systems")

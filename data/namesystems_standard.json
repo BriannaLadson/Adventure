@@ -97,5 +97,104 @@
 				"stead"
 			]
 		]
+	},
+	"dwarf_civilization_names": {
+		"name": "Dwarf Civilization Names",
+		"parts": [
+			["The"],
+			[
+				" Iron ",
+				" Granite ",
+				" Stone ",
+				" Mithril ",
+				" Hammer ",
+				" Anvil ",
+				" Mountain ",
+				" Deep ",
+				" Rune ",
+				" Steel ",
+				" Molten ",
+				" Eternal ",
+				" Ancient ",
+				" Proud ",
+				" Ember ",
+				" Forged ",
+				" High ",
+				" Silver ",
+				" Golden ",
+				" Stout "
+			],
+			[
+				"Kingdom",
+				"Clan",
+				"Hold",
+				"Hall",
+				"Forge",
+				"Confederacy",
+				"Assembly",
+				"Brotherhood",
+				"Dominion",
+				"Council",
+				"Dynasty",
+				"League",
+				"Union",
+				"Stronghold",
+				"Empire",
+				"Federation",
+				"Coalition",
+				"Guild",
+				"Citadel",
+				"Compact"
+			]
+		]
+	},
+	"dwarf_settlement_names": {
+		"name": "Dwarf Settlement Names",
+		"parts": [
+			[
+				"Ir",
+				"Gran",
+				"Sto",
+				"Mith",
+				"Ham",
+				"Anv",
+				"Moun",
+				"Deep",
+				"Run",
+				"Stee",
+				"Mol",
+				"Eter",
+				"An",
+				"Prou",
+				"Emb",
+				"Forg",
+				"High",
+				"Sil",
+				"Gol",
+				"Stou"
+			],
+			[
+				"hold",
+				"hall",
+				"forge",
+				"deep",
+				"delve",
+				"heim",
+				"peak",
+				"vault",
+				"rock",
+				"stone",
+				"gate",
+				"crest",
+				"keep",
+				"mine",
+				"hammer",
+				"anvil",
+				"ridge",
+				"mount",
+				"pass",
+				"crown"
+			]
+		]
 	}
 }
