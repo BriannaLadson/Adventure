@@ -10,7 +10,9 @@ class ItemType:
 		
 		self.description = ""
 		
-		self.actions = []
+		self.actions = [
+			"drop",
+		]
 		
 class BarType(ItemType):
 	def __init__(self, *args):
@@ -114,6 +116,7 @@ class Fruit(ItemType):
 		
 		self.actions = [
 			"consume",
+			"drop",
 		]
 		
 class Ink(ItemType):
@@ -146,6 +149,7 @@ class AnimalMeat(ItemType):
 		
 		self.actions = [
 			"consume",
+			"drop",
 		]
 		
 class Parchment(ItemType):
@@ -172,6 +176,7 @@ class Water(ItemType):
 		
 		self.actions = [
 			"consume",
+			"drop",
 		]
 		
 class Wine(ItemType):
@@ -194,6 +199,7 @@ class Wine(ItemType):
 		
 		self.actions = [
 			"consume",
+			"drop",
 		]
 		
 class Wood(ItemType):

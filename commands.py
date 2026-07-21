@@ -43,6 +43,30 @@ def move(screen, cmd):
 	
 	screen.update_tile_map = True
 	
+def pickup_item(screen, cmd):
+	game = screen.game
+	player = screen.player
+	
+	if player.lx == None or player.ly == None or player.lz == None:
+		return
+	
+	settlement = game.get_settlement_by_coors(player.gx, player.gy)
+	
+	coors = (
+		player.lx,
+		player.ly,
+		player.lz,
+	)
+	
+	if coors not in settlement.dropped_items:
+		return
+		
+	tile_inventory = settlement.dropped_items[coors]
+		
+	second_inv_text = f"Tile ({coors[0]}, {coors[1]}, {coors[2]})"
+		
+	screen.pickup_item(player.inventory, tile_inventory, "You", second_inv_text)
+	
 cmd_dict = {
 	"north": move,
 	"northwest": move,
@@ -53,4 +77,5 @@ cmd_dict = {
 	"west": move,
 	"east": move,
 	"in": move,
+	"pickup_item": pickup_item,
 }

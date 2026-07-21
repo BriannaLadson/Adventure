@@ -397,6 +397,13 @@ class Game:
 		
 		return int(material_cost + cartography_lvl)
 	
+	def get_settlement_by_coors(self, gx, gy):
+		for settlement in self.settlements:
+			if settlement.gx == gx and settlement.gy == gy:
+				return settlement
+				
+		return None
+	
 class Entity:
 	def __init__(self):
 		self.gx = 0
@@ -467,6 +474,26 @@ class Character(Creature):
 				
 			max_value = self.race.needs[need_id]["max"]
 			self.needs[need_id] = min(self.needs[need_id] + amount, max_value)
+			
+		return True
+		
+	def drop_item(self, item_id, game):
+		settlement = game.get_settlement_by_coors(self.gx, self.gy)
+		
+		coors = (
+			self.lx,
+			self.ly,
+			self.lz,
+		)
+		
+		if coors not in settlement.dropped_items:
+			settlement.dropped_items[coors] = inventory.Inventory()
+			
+		if self.inventory.remove_item(item_id, quantity=1):
+			settlement.dropped_items[coors].add_item(
+				item_id,
+				quantity=1
+			)
 			
 		return True
 		
@@ -596,6 +623,8 @@ class Settlement:
 			"trees": random.randint(0, 100),
 			"water": random.randint(0, 100),
 		}
+		
+		self.dropped_items = {}
 		
 	def run_production(self, game):
 		for profession in game.profession_objs.values():

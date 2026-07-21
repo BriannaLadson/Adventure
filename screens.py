@@ -342,6 +342,8 @@ class PlayScreen(Screen):
 		
 		root.bind("<Escape>", self.open_menu)
 		
+		root.bind("g", lambda e: commands.process_cmd(e, self, "pickup_item"))
+		
 	def update_screen(self):
 		game = self.game
 		player = self.player
@@ -473,6 +475,14 @@ class PlayScreen(Screen):
 		game.local_generator = generator
 		
 		return generator, "local"
+		
+	def pickup_item(self, first_inventory, second_inventory, first_inv_text, second_inv_text):
+		root = self.root
+		game = self.game
+		player = self.player
+		
+		popup = InventoryTransferPopup(root, game, first_inventory, second_inventory, first_inv_text, second_inv_text)
+		popup.center()
 
 #Popups
 class Popup(Toplevel):
@@ -723,6 +733,7 @@ class ItemPopup(Popup):
 			
 		self.action_funcs = {
 			"consume": self.consume_item,
+			"drop": self.drop_item,
 		}
 		
 		actions = getattr(item, "actions", [])
@@ -763,8 +774,22 @@ class ItemPopup(Popup):
 			inventory_notebook = nb.tabs["Inventory"]
 			inventory_notebook.tabs["Items"].populate()
 			
-			
 			nb.tabs["Health"].tabs["Needs"].populate()
+			
+			self.destroy()
+			
+	def drop_item(self):
+		player = self.game.player
+		
+		if player.lx == None or player.ly == None or player.lz == None:
+			return
+			
+		if player.drop_item(self.item_id, self.game):
+			sheet = self.parent_tab.winfo_toplevel()
+			nb = sheet.character_sheet_nb
+			
+			inventory_notebook = nb.tabs["Inventory"]
+			inventory_notebook.tabs["Items"].populate()
 			
 			self.destroy()
 			
@@ -894,6 +919,102 @@ class LoadSavePopup(Popup):
 		root.play_screen = PlayScreen(root)
 		root.play_screen.display()
 		
+		self.destroy()
+		
+class InventoryTransferPopup(Popup):
+	def __init__(self, root, game, first_inventory, second_inventory, first_inv_text="Inventory", second_inv_text="Inventory"):
+		super().__init__(root)
+		
+		self.game = game
+		
+		self.first_inventory = first_inventory
+		self.second_inventory = second_inventory
+		
+		top_fr = ttk.Frame(self)
+		top_fr.pack(fill=BOTH, expand=1)
+		
+		self.first_inventory_fr = ttk.Frame(top_fr)
+		self.first_inventory_fr.pack(side=LEFT, fill=Y)
+		
+		first_inventory_lbl = ttk.Label(self.first_inventory_fr, text=first_inv_text, anchor="center")
+		first_inventory_lbl.pack(fill=X)
+		
+		self.first_inventory_scr_fr = ScrollableFrame(self.first_inventory_fr)
+		self.first_inventory_scr_fr.pack(fill=BOTH, expand=1)
+		
+		self.first_inventory_btn = ttk.Button(self.first_inventory_fr, text="Transfer All", command=lambda: self.transfer_all(self.first_inventory, self.second_inventory))
+		self.first_inventory_btn.pack(fill=X)
+		
+		self.second_inventory_fr = ttk.Frame(top_fr)
+		self.second_inventory_fr.pack(side=LEFT, fill=Y)
+		
+		second_inventory_lbl = ttk.Label(self.second_inventory_fr, text=second_inv_text, anchor="center")
+		second_inventory_lbl.pack(fill=X)
+		
+		self.second_inventory_scr_fr = ScrollableFrame(self.second_inventory_fr)
+		self.second_inventory_scr_fr.pack(fill=BOTH, expand=1)
+		
+		self.second_inventory_btn = ttk.Button(self.second_inventory_fr, text="Transfer All", command=lambda: self.transfer_all(self.second_inventory, self.first_inventory))
+		self.second_inventory_btn.pack(fill=X)
+
+		self.close_btn = ttk.Button(self, text="Close", command=self.close)
+		self.close_btn.pack(fill=X)
+		
+		self.populate()
+		
+		self.center()
+		
+	def populate_inventory(self, scroll_frame, source_inventory, target_inventory):
+		frame = scroll_frame.scrolling_frame
+		
+		for widget in frame.winfo_children():
+			widget.destroy()
+			
+		for item_id, quantity in source_inventory.get_items():
+			item_frame = ttk.Frame(frame)
+			item_frame.pack(fill=X)
+			
+			item = self.game.item_type_objs[item_id]
+			
+			ttk.Label(
+				item_frame,
+				text=f"{item.name} x{quantity}",
+				anchor="center"
+			).pack(side=LEFT, fill=X, expand=True)
+			
+			ttk.Button(
+				item_frame,
+				text="Move",
+				command=lambda i=item_id, s=source_inventory, t=target_inventory: self.move_item(s, t, i, 1)
+			).pack(side=RIGHT)
+			
+			ttk.Button(
+				item_frame,
+				text="Move All",
+				command=lambda i=item_id, q=quantity, s=source_inventory, t=target_inventory: self.move_item(s, t, i, q)
+			).pack(side=RIGHT)
+			
+	def move_item(self, source_inventory, target_inventory, item_id, quantity):
+		if source_inventory.remove_item(item_id, quantity):
+			target_inventory.add_item(item_id, quantity)
+			
+		self.populate()
+		
+	def transfer_all(self, source_inventory, target_inventory):
+		items = list(source_inventory.get_items())
+		
+		for item_id, quantity in items:
+			source_inventory.remove_item(item_id, quantity)
+			target_inventory.add_item(item_id, quantity)
+			
+		self.populate()
+		
+	def populate(self):
+		self.populate_inventory(self.first_inventory_scr_fr, self.first_inventory, self.second_inventory)
+		
+		self.populate_inventory(self.second_inventory_scr_fr, self.second_inventory, self.first_inventory)
+		
+	def close(self):
 		self.destroy()
 
 #Widgets
@@ -1672,6 +1793,8 @@ class TileMap(Canvas):
 		
 		self.draw_locations()
 		
+		self.draw_dropped_items()
+		
 		self.draw_player()
 		
 	def draw_tiles(self):
@@ -1883,6 +2006,51 @@ class TileMap(Canvas):
 				)
 				
 				self.building_items.append(door_item)
+				
+	def draw_dropped_items(self):
+		if hasattr(self, "dropped_items"):
+			for item in self.dropped_items:
+				self.delete(item)
+				
+		self.dropped_items = []
+		
+		if not isinstance(self.generator, entities.TownMapGenerator):
+			return
+			
+		settlement = self.generator.settlement
+		
+		if not hasattr(settlement, "dropped_items"):
+			return
+			
+		tile_width = self.winfo_width() / self.map_size
+		tile_height = self.winfo_height() / self.map_size
+		
+		half = self.map_size // 2
+		
+		px, py = self.get_player_coords()
+		
+		for (x, y, z), inventory in settlement.dropped_items.items():
+			if not inventory.get_items():
+				continue
+				
+			screen_x = x - px + half
+			screen_y = y - py + half
+			
+			if not (0 <= screen_x < self.map_size and 0 <= screen_y < self.map_size):
+				continue
+				
+			cx = (screen_x + 0.5) * tile_width
+			cy = (screen_y + 0.7) * tile_height
+			
+			item = self.create_text(
+				cx,
+				cy,
+				text="*",
+				font=("TkDefaultFont", int(min(tile_width, tile_height) * 1),"bold")
+			)
+			
+			self.dropped_items.append(item)
+			self.tag_raise(item)
 		
 	def move_left(self, event=None):
 		if self.player_x > 0:
@@ -2109,7 +2277,7 @@ class PlayerInventoryGrid(ttk.Treeview):
 		if not selected:
 			return None
 			
-		return selected[0]
+		return selected[0]		
 		
 class ProgressBar(Canvas):
 	def __init__(self, parent, value=100, max_value=100, fill_color="green", text=None):
