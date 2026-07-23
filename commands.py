@@ -65,7 +65,7 @@ def pickup_item(screen, cmd):
 		
 	second_inv_text = f"Tile ({coors[0]}, {coors[1]}, {coors[2]})"
 		
-	screen.pickup_item(player.inventory, tile_inventory, "You", second_inv_text)
+	screen.pickup_item(player, tile_inventory, "You", second_inv_text)
 	
 cmd_dict = {
 	"north": move,

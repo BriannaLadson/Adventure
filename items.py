@@ -6,7 +6,9 @@ class Item:
 		
 		self.value = 1
 		
-		self.actions = []
+		self.actions = [
+			"drop",
+		]
 		
 		self.description = ""
 

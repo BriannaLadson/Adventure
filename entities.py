@@ -477,8 +477,26 @@ class Character(Creature):
 			
 		return True
 		
-	def drop_item(self, item_id, game):
+	def drop_item(self, item_id, game, quantity=1, source="inventory"):
+		if not self.is_location_local():
+			return False
+			
+		if quantity <= 0:
+			return False
+		
 		settlement = game.get_settlement_by_coors(self.gx, self.gy)
+		
+		if settlement is None:
+			return False
+			
+		if source == "wallet":
+			removed = self.wallet.remove_coins(item_id, quantity)
+			
+		else:
+			removed = self.inventory.remove_item(item_id, quantity)
+			
+		if not removed:
+			return False
 		
 		coors = (
 			self.lx,
@@ -489,12 +507,8 @@ class Character(Creature):
 		if coors not in settlement.dropped_items:
 			settlement.dropped_items[coors] = inventory.Inventory()
 			
-		if self.inventory.remove_item(item_id, quantity=1):
-			settlement.dropped_items[coors].add_item(
-				item_id,
-				quantity=1
-			)
-			
+		settlement.dropped_items[coors].add_item(item_id, quantity=quantity)
+		
 		return True
 		
 	def is_dead(self):
@@ -523,6 +537,18 @@ class Character(Creature):
 				self.need_warnings[need_id] = False
 				
 		return low_needs
+		
+	def add_carried_object(self, item_id, game, quantity=1):
+		if item_id in game.coin_objs:
+			return self.wallet.add_coins(item_id, quantity)
+			
+		return self.inventory.add_item(item_id, quantity)
+		
+	def remove_carried_object(self, item_id, game, quantity=1):
+		if item_id in game.coin_objs:
+			return self.wallet.remove_coins(item_id, quantity)
+			
+		return self.inventory.remove_item(item_id, quantity)
 		
 class Player(Character):
 	def __init__(self, race):

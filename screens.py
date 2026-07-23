@@ -481,7 +481,7 @@ class PlayScreen(Screen):
 		game = self.game
 		player = self.player
 		
-		popup = InventoryTransferPopup(root, game, first_inventory, second_inventory, first_inv_text, second_inv_text)
+		popup = InventoryTransferPopup(root, game, first_inventory, second_inventory, first_inv_text, second_inv_text, first_is_character=True)
 		popup.center()
 
 #Popups
@@ -701,7 +701,7 @@ class CharacterSheetPopup(Popup):
 		self.center()
 		
 class ItemPopup(Popup):
-	def __init__(self, root, game, item_id, quantity=1, parent_tab=None):
+	def __init__(self, root, game, item_id, quantity=1, parent_tab=None, source="inventory"):
 		super().__init__(root)
 		
 		self.parent_tab = parent_tab
@@ -709,16 +709,18 @@ class ItemPopup(Popup):
 		self.game = game
 		self.item_id = item_id
 		self.quantity = quantity
+		self.source = source
 		self.item = item = game.item_type_objs[item_id]
 		
 		ttk.Label(self, text=self.item.name, anchor="center").pack(fill=X)
 		
-		ttk.Label(self, text=f"Quantity: {quantity}", anchor="center").pack(fill=X)
+		self.quantity_lbl = ttk.Label(self, text=f"Quantity: {quantity}", anchor="center")
+		self.quantity_lbl.pack(fill=X)
 		
 		value = getattr(self.item, "value", getattr(self.item, "base_value", 0))
 		ttk.Label(self, text=f"Base Value: {value}", anchor="center").pack(fill=X)
 		
-		ttk.Label(self, text=item.description, wraplength=300, justify="center").pack(fill=BOTH, expand=1)
+		ttk.Label(self, text=item.description, wraplength=300, anchor="center").pack(fill=BOTH, expand=1)
 		
 		# Needs
 		need_values = getattr(item, "need_values", {})
@@ -781,17 +783,47 @@ class ItemPopup(Popup):
 	def drop_item(self):
 		player = self.game.player
 		
-		if player.lx == None or player.ly == None or player.lz == None:
+		if not player.is_location_local():
 			return
 			
-		if player.drop_item(self.item_id, self.game):
-			sheet = self.parent_tab.winfo_toplevel()
-			nb = sheet.character_sheet_nb
+		if self.quantity > 1:
+			DropQuantityPopup(
+				self.root,
+				self.item.name,
+				self.quantity,
+				self.perform_drop,
+			)
+			return
 			
-			inventory_notebook = nb.tabs["Inventory"]
-			inventory_notebook.tabs["Items"].populate()
+		self.perform_drop(1)
+		
+	def perform_drop(self, quantity):
+		player = self.game.player
+
+		success = player.drop_item(
+			self.item_id,
+			self.game,
+			quantity=quantity,
+			source=self.source,
+		)
+
+		if not success:
+			return
+
+		if self.parent_tab is not None:
+			self.parent_tab.populate()
 			
+		self.root.root.play_screen.tile_map.update_map()
+
+		self.quantity -= quantity
+
+		if self.quantity <= 0:
 			self.destroy()
+			return
+
+		self.quantity_lbl.config(
+			text=f"Quantity: {self.quantity}"
+		)
 			
 class DeathPopup(Popup):
 	def __init__(self, root):
@@ -922,100 +954,363 @@ class LoadSavePopup(Popup):
 		self.destroy()
 		
 class InventoryTransferPopup(Popup):
-	def __init__(self, root, game, first_inventory, second_inventory, first_inv_text="Inventory", second_inv_text="Inventory"):
+	def __init__(
+		self,
+		root,
+		game,
+		first_inventory,
+		second_inventory,
+		first_inv_text="Inventory",
+		second_inv_text="Inventory",
+		first_is_character=False,
+		second_is_character=False,
+	):
 		super().__init__(root)
-		
+
 		self.game = game
-		
+
 		self.first_inventory = first_inventory
 		self.second_inventory = second_inventory
-		
+
+		self.first_is_character = first_is_character
+		self.second_is_character = second_is_character
+
 		top_fr = ttk.Frame(self)
 		top_fr.pack(fill=BOTH, expand=1)
-		
+
 		self.first_inventory_fr = ttk.Frame(top_fr)
 		self.first_inventory_fr.pack(side=LEFT, fill=Y)
-		
-		first_inventory_lbl = ttk.Label(self.first_inventory_fr, text=first_inv_text, anchor="center")
+
+		first_inventory_lbl = ttk.Label(
+			self.first_inventory_fr,
+			text=first_inv_text,
+			anchor="center",
+		)
 		first_inventory_lbl.pack(fill=X)
-		
-		self.first_inventory_scr_fr = ScrollableFrame(self.first_inventory_fr)
-		self.first_inventory_scr_fr.pack(fill=BOTH, expand=1)
-		
-		self.first_inventory_btn = ttk.Button(self.first_inventory_fr, text="Transfer All", command=lambda: self.transfer_all(self.first_inventory, self.second_inventory))
+
+		self.first_inventory_scr_fr = ScrollableFrame(
+			self.first_inventory_fr
+		)
+		self.first_inventory_scr_fr.pack(
+			fill=BOTH,
+			expand=1,
+		)
+
+		self.first_inventory_btn = ttk.Button(
+			self.first_inventory_fr,
+			text="Transfer All",
+			command=lambda: self.transfer_all(
+				self.first_inventory,
+				self.second_inventory,
+				self.first_is_character,
+				self.second_is_character,
+			),
+		)
 		self.first_inventory_btn.pack(fill=X)
-		
+
 		self.second_inventory_fr = ttk.Frame(top_fr)
 		self.second_inventory_fr.pack(side=LEFT, fill=Y)
-		
-		second_inventory_lbl = ttk.Label(self.second_inventory_fr, text=second_inv_text, anchor="center")
+
+		second_inventory_lbl = ttk.Label(
+			self.second_inventory_fr,
+			text=second_inv_text,
+			anchor="center",
+		)
 		second_inventory_lbl.pack(fill=X)
-		
-		self.second_inventory_scr_fr = ScrollableFrame(self.second_inventory_fr)
-		self.second_inventory_scr_fr.pack(fill=BOTH, expand=1)
-		
-		self.second_inventory_btn = ttk.Button(self.second_inventory_fr, text="Transfer All", command=lambda: self.transfer_all(self.second_inventory, self.first_inventory))
+
+		self.second_inventory_scr_fr = ScrollableFrame(
+			self.second_inventory_fr
+		)
+		self.second_inventory_scr_fr.pack(
+			fill=BOTH,
+			expand=1,
+		)
+
+		self.second_inventory_btn = ttk.Button(
+			self.second_inventory_fr,
+			text="Transfer All",
+			command=lambda: self.transfer_all(
+				self.second_inventory,
+				self.first_inventory,
+				self.second_is_character,
+				self.first_is_character,
+			),
+		)
 		self.second_inventory_btn.pack(fill=X)
 
-		self.close_btn = ttk.Button(self, text="Close", command=self.close)
+		self.close_btn = ttk.Button(
+			self,
+			text="Close",
+			command=self.close,
+		)
 		self.close_btn.pack(fill=X)
-		
+
 		self.populate()
-		
+
 		self.center()
-		
-	def populate_inventory(self, scroll_frame, source_inventory, target_inventory):
+
+	def get_items(self, container, is_character):
+		if is_character:
+			items = list(container.inventory.get_items())
+
+			for coin_id, quantity in container.wallet.get_coins():
+				items.append((coin_id, quantity))
+
+			return items
+
+		return list(container.get_items())
+
+	def add_object(self, container, is_character, item_id, quantity):
+		if is_character:
+			return container.add_carried_object(
+				item_id,
+				self.game,
+				quantity,
+			)
+			
+		self.root.play_screen.tile_map.update_map()
+
+		return container.add_item(
+			item_id,
+			quantity,
+		)
+
+	def remove_object(
+		self,
+		container,
+		is_character,
+		item_id,
+		quantity,
+	):
+		if is_character:
+			return container.remove_carried_object(
+				item_id,
+				self.game,
+				quantity,
+			)
+			
+		self.root.play_screen.tile_map.update_map()
+
+		return container.remove_item(
+			item_id,
+			quantity,
+		)
+
+	def populate_inventory(
+		self,
+		scroll_frame,
+		source_container,
+		target_container,
+		source_is_character,
+		target_is_character,
+	):
 		frame = scroll_frame.scrolling_frame
-		
+
 		for widget in frame.winfo_children():
 			widget.destroy()
-			
-		for item_id, quantity in source_inventory.get_items():
+
+		for item_id, quantity in self.get_items(
+			source_container,
+			source_is_character,
+		):
 			item_frame = ttk.Frame(frame)
 			item_frame.pack(fill=X)
-			
+
 			item = self.game.item_type_objs[item_id]
-			
+
 			ttk.Label(
 				item_frame,
 				text=f"{item.name} x{quantity}",
-				anchor="center"
-			).pack(side=LEFT, fill=X, expand=True)
-			
+				anchor="center",
+			).pack(
+				side=LEFT,
+				fill=X,
+				expand=True,
+			)
+
 			ttk.Button(
 				item_frame,
 				text="Move",
-				command=lambda i=item_id, s=source_inventory, t=target_inventory: self.move_item(s, t, i, 1)
+				command=lambda i=item_id,
+				s=source_container,
+				t=target_container,
+				s_char=source_is_character,
+				t_char=target_is_character: self.move_item(
+					s,
+					t,
+					i,
+					1,
+					s_char,
+					t_char,
+				),
 			).pack(side=RIGHT)
-			
+
 			ttk.Button(
 				item_frame,
 				text="Move All",
-				command=lambda i=item_id, q=quantity, s=source_inventory, t=target_inventory: self.move_item(s, t, i, q)
+				command=lambda i=item_id,
+				q=quantity,
+				s=source_container,
+				t=target_container,
+				s_char=source_is_character,
+				t_char=target_is_character: self.move_item(
+					s,
+					t,
+					i,
+					q,
+					s_char,
+					t_char,
+				),
 			).pack(side=RIGHT)
-			
-	def move_item(self, source_inventory, target_inventory, item_id, quantity):
-		if source_inventory.remove_item(item_id, quantity):
-			target_inventory.add_item(item_id, quantity)
-			
+
+	def move_item(
+		self,
+		source_container,
+		target_container,
+		item_id,
+		quantity,
+		source_is_character,
+		target_is_character,
+	):
+		removed = self.remove_object(
+			source_container,
+			source_is_character,
+			item_id,
+			quantity,
+		)
+
+		if not removed:
+			return
+
+		added = self.add_object(
+			target_container,
+			target_is_character,
+			item_id,
+			quantity,
+		)
+
+		if not added:
+			self.add_object(
+				source_container,
+				source_is_character,
+				item_id,
+				quantity,
+			)
+
 		self.populate()
-		
-	def transfer_all(self, source_inventory, target_inventory):
-		items = list(source_inventory.get_items())
-		
+
+	def transfer_all(
+		self,
+		source_container,
+		target_container,
+		source_is_character,
+		target_is_character,
+	):
+		items = self.get_items(
+			source_container,
+			source_is_character,
+		)
+
 		for item_id, quantity in items:
-			source_inventory.remove_item(item_id, quantity)
-			target_inventory.add_item(item_id, quantity)
-			
+			removed = self.remove_object(
+				source_container,
+				source_is_character,
+				item_id,
+				quantity,
+			)
+
+			if not removed:
+				continue
+
+			added = self.add_object(
+				target_container,
+				target_is_character,
+				item_id,
+				quantity,
+			)
+
+			if not added:
+				self.add_object(
+					source_container,
+					source_is_character,
+					item_id,
+					quantity,
+				)
+				
+		self.root.play_screen.tile_map.update_map()
+
 		self.populate()
-		
+
 	def populate(self):
-		self.populate_inventory(self.first_inventory_scr_fr, self.first_inventory, self.second_inventory)
-		
-		self.populate_inventory(self.second_inventory_scr_fr, self.second_inventory, self.first_inventory)
-		
+		self.populate_inventory(
+			self.first_inventory_scr_fr,
+			self.first_inventory,
+			self.second_inventory,
+			self.first_is_character,
+			self.second_is_character,
+		)
+
+		self.populate_inventory(
+			self.second_inventory_scr_fr,
+			self.second_inventory,
+			self.first_inventory,
+			self.second_is_character,
+			self.first_is_character,
+		)
+
 	def close(self):
 		self.destroy()
+		
+class DropQuantityPopup(Popup):
+	def __init__(self, root, item_name, max_quantity, callback):
+		super().__init__(root)
+
+		self.max_quantity = max_quantity
+		self.callback = callback
+
+		ttk.Label(
+			self,
+			text=f"Drop how many {item_name}?",
+			anchor="center",
+		).pack(fill=X)
+
+		self.quantity_var = IntVar(value=1)
+
+		self.quantity_spn = ttk.Spinbox(
+			self,
+			from_=1,
+			to=max_quantity,
+			textvariable=self.quantity_var,
+		)
+		self.quantity_spn.pack(fill=X, padx=5, pady=5)
+
+		ttk.Button(
+			self,
+			text="Drop",
+			command=self.confirm,
+		).pack(fill=X)
+
+		ttk.Button(
+			self,
+			text="Cancel",
+			command=self.destroy,
+		).pack(fill=X)
+
+		self.center()
+
+	def confirm(self):
+		try:
+			quantity = int(self.quantity_var.get())
+
+		except (ValueError, TclError):
+			return
+
+		if quantity < 1 or quantity > self.max_quantity:
+			return
+			
+		self.destroy()
+
+		self.callback(quantity)
 
 #Widgets
 class ScrollableListbox(ttk.Frame):
@@ -1660,6 +1955,7 @@ class ItemsTab(Tab):
 					item_id,
 					quantity,
 					parent_tab=self,
+					source="inventory",
 				)
 			)
 			btn.pack(fill=X)
@@ -1685,11 +1981,22 @@ class WalletTab(Tab):
 		
 		helpf.destroy_children_widgets(scr_fr)
 		
-		for key, val in wallet.coins.items():
-			currency_name = game.coin_objs[key].name
+		for coin_id, quantity in wallet.get_coins():
+			coin = game.coin_objs[coin_id]
 			
-			lbl = ttk.Label(scr_fr, text=f"{currency_name}: {val}", anchor="center")
-			lbl.pack(fill=X)
+			btn = ttk.Button(
+				scr_fr,
+				text=f"{coin.name} x{quantity}",
+				command=lambda coin_id=coin_id, quantity=quantity: ItemPopup(
+					self.winfo_toplevel(),
+					game,
+					coin_id,
+					quantity,
+					parent_tab=self,
+					source="wallet",
+				),
+			)
+			btn.pack(fill=X)
 
 #Other Widgets		
 class ScrollableFrame(ttk.Frame):
