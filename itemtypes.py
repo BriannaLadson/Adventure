@@ -108,10 +108,6 @@ class Fruit(ItemType):
 		
 		self.name = "Fruit"
 		
-		self.need_values = {
-			"hunger": 15,
-		}
-		
 		self.base_value = 2
 		
 		self.actions = [
@@ -141,10 +137,6 @@ class AnimalMeat(ItemType):
 		
 		self.name = "Animal Meat"
 		
-		self.need_values = {
-			"hunger": 25,
-		}
-		
 		self.base_value = 3
 		
 		self.actions = [
@@ -170,10 +162,6 @@ class Water(ItemType):
 		
 		self.name = "Water"
 		
-		self.need_values = {
-			"thirst": 25,
-		}
-		
 		self.actions = [
 			"consume",
 			"drop",
@@ -191,10 +179,6 @@ class Wine(ItemType):
 		
 		self.reagents = {
 			"fruit": 1,
-		}
-		
-		self.need_values = {
-			"alcohol": 25,
 		}
 		
 		self.actions = [

@@ -1,0 +1,24 @@
+{
+	"human_dietaryprofile": {
+		"fruit": {
+			"hunger": 15
+		},
+		"animal_meat": {
+			"hunger": 25
+		},
+		"water": {
+			"thirst": 25
+		}
+	},
+	"dwarf_dietaryprofile": {
+		"fruit": {
+			"hunger": 15
+		},
+		"animal_meat": {
+			"hunger": 25
+		},
+		"wine": {
+			"thirst": 25
+		}
+	}
+}

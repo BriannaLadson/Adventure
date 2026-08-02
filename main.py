@@ -6,7 +6,7 @@ import helpfunctions as helpf
 class Root(Tk):
 	def __init__(self):
 		super().__init__()
-		self.title("Adventure v0.10.2")
+		self.title("Adventure v0.11.0")
 		self.state("zoomed")
 		
 if __name__ == "__main__":

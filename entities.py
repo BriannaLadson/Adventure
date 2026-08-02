@@ -2,6 +2,7 @@ import random
 import numpy as np
 from terraforge import TownForge
 from dyecon import Economy, SubEconomy
+import copy
 
 import time
 
@@ -307,6 +308,9 @@ class Game:
 			if hasattr(entity, "update_needs"):
 				entity.update_needs()
 				
+			if isinstance(entity, Player):
+				entity.auto_consume_items(self)
+				
 			if hasattr(entity, "is_dead"):
 				if entity.is_dead():
 					dead_entities.append(entity)
@@ -404,6 +408,15 @@ class Game:
 				
 		return None
 	
+	def resolve_data_references(self):
+		self.resolve_race_references()
+		
+	def resolve_race_references(self):
+		for race in self.race_objs.values():
+			dietary_profile_id = race.dietary_profile
+			
+			race.dietary_profile = self.dietary_profile_objs[dietary_profile_id]
+	
 class Entity:
 	def __init__(self):
 		self.gx = 0
@@ -439,6 +452,8 @@ class Character(Creature):
 			need_id: need_data["max"] for need_id, need_data in race.needs.items()
 		}
 		
+		
+		
 		self.need_warnings = {
 			need_id: False for need_id in self.needs
 		}
@@ -448,6 +463,21 @@ class Character(Creature):
 		self.inventory = inventory.Inventory()
 		
 		self.alive = True
+		
+		self.skills = {
+			"strength": {
+				"level": 1,
+				"xp": 0,
+				"max_xp": 200,
+			},
+			"speed": {
+				"level": 1,
+				"xp": 0,
+				"max_xp": 100,
+			}
+		}
+		
+		self.dietary_profile = race.dietary_profile.copy()
 		
 	def update_needs(self):
 		for need_id, need_data in self.race.needs.items():
@@ -459,8 +489,7 @@ class Character(Creature):
 				self.needs[need_id] = 0
 				
 	def consume_item(self, item_id, game):
-		item = game.item_type_objs[item_id]
-		need_values = getattr(item, "need_values", {})
+		need_values = self.dietary_profile.items.get(item_id)
 		
 		if not need_values:
 			return False
@@ -476,6 +505,36 @@ class Character(Creature):
 			self.needs[need_id] = min(self.needs[need_id] + amount, max_value)
 			
 		return True
+		
+	def auto_consume_items(self, game, threshold=25):
+		consumed_items = []
+		
+		for need_id in self.needs:
+			while self.needs[need_id] <= threshold:
+				item_id = self.find_item_for_need(need_id)
+				
+				if item_id is None:
+					break
+					
+				if not self.consume_item(item_id, game):
+					break
+					
+				consumed_items.append(item_id)
+				
+		return consumed_items
+		
+	def find_item_for_need(self, need_id):
+		for item_id, quantity in self.inventory.get_items():
+			if quantity <= 0:
+				continue
+				
+			effects = self.dietary_profile.items.get(item_id, {})
+			amount = effects.get(need_id, 0)
+			
+			if amount > 0:
+				return item_id
+				
+		return None
 		
 	def drop_item(self, item_id, game, quantity=1, source="inventory"):
 		if not self.is_location_local():
@@ -896,6 +955,18 @@ class Biome:
 		
 		self.color = args[2]
 		
+class DietaryProfile:
+	def __init__(self, *args):
+		self.id = args[0]
+		
+		self.items = args[1]
+		
+	def copy(self):
+		return DietaryProfile(
+			self.id,
+			copy.deepcopy(self.items),
+		)
+		
 class NameSystem:
 	def __init__(self, *args):
 		self.id = args[0]
@@ -943,6 +1014,8 @@ class Race:
 		self.settlement_currency = args[12]
 		
 		self.needs = args[13]
+		
+		self.dietary_profile = args[14]
 		
 	def get_name_system_id(self, name_system_type):
 		name_systems = getattr(self, f"{name_system_type}_name_systems")

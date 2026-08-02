@@ -723,13 +723,16 @@ class ItemPopup(Popup):
 		ttk.Label(self, text=item.description, wraplength=300, anchor="center").pack(fill=BOTH, expand=1)
 		
 		# Needs
-		need_values = getattr(item, "need_values", {})
+		player = game.player
+		need_values = player.dietary_profile.items.get(item_id, {})
 		
 		if need_values:
 			for need_id, amount in need_values.items():
+				sign = "+" if amount > 0 else ""
+				
 				ttk.Label(
 					self,
-					text=f"{need_id.capitalize()}: +{amount}",
+					text=f"{need_id.capitalize()}: {sign}{amount}",
 					anchor="center"
 				).pack(fill=X)
 			
@@ -739,6 +742,9 @@ class ItemPopup(Popup):
 		}
 		
 		actions = getattr(item, "actions", [])
+		
+		if "consume" in actions and item_id not in player.dietary_profile.items:
+			actions.remove("consume")
 		
 		if actions:
 			self.scrollable_frame = ScrollableFrame(self)

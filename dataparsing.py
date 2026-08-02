@@ -24,6 +24,8 @@ def load_data(game, data_path="data"):
 		
 		if loader_func:
 			loader_func(game, data)
+			
+	game.resolve_data_references()
 
 #World Settings		
 def load_world_settings(game, data):
@@ -114,6 +116,23 @@ def load_coins(game, data):
 		
 	game.coin_objs = coin_objs
 	
+def load_dietary_profiles(game, data):
+	dietary_profile_objs = {}
+	
+	for dietary_profile in data:
+		id = dietary_profile
+		
+		dietary_profile_data = data[dietary_profile]
+		
+		dietary_profile_obj = entities.DietaryProfile(
+			id,
+			dietary_profile_data,
+		)
+		
+		dietary_profile_objs[id] = dietary_profile_obj
+		
+	game.dietary_profile_objs = dietary_profile_objs
+	
 def load_name_systems(game, data):
 	name_system_objs = {}
 	
@@ -174,6 +193,7 @@ def load_races(game, data):
 			race_data["currency"],
 			race_data["settlement_currency"],
 			race_data["needs"],
+			race_data["dietary_profile"],
 		)
 		
 		race_objs[id] = race_obj
@@ -183,6 +203,7 @@ def load_races(game, data):
 PREFIX_LOADERS = {
 	"bars_": load_bars,
 	"coins_": load_coins,
+	"dietaryprofiles_": load_dietary_profiles,
 	"namesystems_": load_name_systems,
 	"ores_": load_ores,
 	"races_": load_races,
