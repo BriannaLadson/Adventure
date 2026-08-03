@@ -1,4 +1,4 @@
-# Adventure v0.11.0
+# Adventure v0.11.1
 
 Adventure is an open-world sandbox RPG simulation built using Python and Tkinter.
 
