@@ -49,6 +49,8 @@ def load_world_settings(game, data):
 	game.min_island_spacing = data["min_island_spacing"]
 	
 	game.local_map_size = data["local_map_size"]
+	
+	game.initial_production_cycles = data["initial_production_cycles"]
 
 def load_calendar(game, data):
 	game.calendar = calendar = CQCalendar(

@@ -4,6 +4,7 @@
 	"island_spread": 0.3,
 	"min_island_spacing": null,
 	"local_map_size": 50,
+	"initial_production_cycles": 50,
 	"calendar": {
 		"months": [
 			{"name": "Januwere", "days": 31},

@@ -5,7 +5,8 @@ def generate_world(game):
 	generate_capitals(game)
 	generate_settlements(game)
 	
-	game.run_settlement_production()
+	for _ in range(game.initial_production_cycles):
+		game.run_settlement_production()
 	
 def generate_civilizations(game):
 	game.civilizations = []

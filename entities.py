@@ -43,6 +43,8 @@ class Game:
 		
 		self.entities = []
 		
+		self.initial_production_cycles = 1
+		
 	def init_economy(self):
 		base_values = {}
 		

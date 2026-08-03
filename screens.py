@@ -1500,7 +1500,7 @@ class RegionNotebook(ttk.Notebook):
 		
 		#Map Size
 		map_size_fr = ttk.Frame(self)
-		map_size_fr.pack()
+		map_size_fr.pack(fill=X)
 		
 		map_size_lbl = ttk.Label(map_size_fr, text="Map Size:")
 		map_size_lbl.pack(side=LEFT)
@@ -1510,6 +1510,19 @@ class RegionNotebook(ttk.Notebook):
 		
 		map_size_ent = ttk.Entry(map_size_fr, textvariable=self.map_size_var)
 		map_size_ent.pack(side=LEFT)
+		
+		#Initial Production Cycles
+		production_cycle_fr = ttk.Frame(self)
+		production_cycle_fr.pack(fill=X)
+		
+		production_cycle_lbl = ttk.Label(production_cycle_fr, text="Production Cycles:")
+		production_cycle_lbl.pack(side=LEFT)
+		
+		self.production_cycle_var = IntVar(value=game.initial_production_cycles)
+		self.production_cycle_var.trace_add("write", self.trace)
+		
+		production_cycle_ent = ttk.Entry(production_cycle_fr, textvariable=self.production_cycle_var)
+		production_cycle_ent.pack(side=LEFT)
 		
 	def trace(self, *args):
 		game = self.game
@@ -1525,6 +1538,18 @@ class RegionNotebook(ttk.Notebook):
 			self.map_size_var.set(100)
 			
 		game.local_map_size = self.map_size_var.get()
+		
+		#Initial Production Cycles
+		try:
+			production_cycles = self.production_cycle_var.get()
+			
+			if not isinstance(production_cycles, int) or production_cycles < 0:
+				raise TclError
+		
+		except:
+			self.production_cycle_var.set(1)
+			
+		game.initial_production_cycles = self.production_cycle_var.get()
 		
 class NoiseTypeTab(Tab):
 	def __init__(self, parent, game, noise_type_key):
