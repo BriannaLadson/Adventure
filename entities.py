@@ -336,13 +336,13 @@ class Game:
 		if not sub_economy.has_item(item_id, quantity):
 			return False
 			
-		if not buyer.wallet.remove_coins(currency, price):
+		if not buyer.remove_carried_object(currency, self, price):
 			return False
 			
 		settlement.wallet.add_coins(currency, price)
 		
 		sub_economy.remove_item(item_id, quantity)
-		buyer.inventory.add_item(item_id, quantity)
+		buyer.add_carried_object(item_id, self, quantity)
 		
 		return True
 	
@@ -352,14 +352,14 @@ class Game:
 		
 		price = settlement.sub_economy.get_value(item_id) * quantity
 		
-		if not seller.inventory.remove_item(item_id, quantity):
+		if not seller.remove_carried_object(item_id, self, quantity):
 			return False
 			
 		if not settlement.wallet.remove_coins(currency, price):
-			seller.inventory.add_item(item_id, quantity)
+			seller.add_carried_object(item_id, self, quantity)
 			return False
 			
-		seller.wallet.add_coins(currency, price)
+		seller.add_carried_object(currency, self, price)
 		
 		sub_economy.add_item(item_id, quantity)
 		
@@ -475,11 +475,14 @@ class Character(Creature):
 			"speed": {
 				"level": 1,
 				"xp": 0,
-				"max_xp": 100,
+				"max_xp": 200,
 			}
 		}
 		
 		self.dietary_profile = race.dietary_profile.copy()
+		
+		self.cur_encumbrance = 0
+		self.max_encumbrance = 100
 		
 	def update_needs(self):
 		for need_id, need_data in self.race.needs.items():
@@ -496,7 +499,7 @@ class Character(Creature):
 		if not need_values:
 			return False
 			
-		if not self.inventory.remove_item(item_id, 1):
+		if not self.remove_carried_object(item_id, game, 1):
 			return False
 			
 		for need_id, amount in need_values.items():
@@ -550,11 +553,11 @@ class Character(Creature):
 		if settlement is None:
 			return False
 			
-		if source == "wallet":
-			removed = self.wallet.remove_coins(item_id, quantity)
-			
-		else:
-			removed = self.inventory.remove_item(item_id, quantity)
+		removed = self.remove_carried_object(
+			item_id,
+			game,
+			quantity,
+		)
 			
 		if not removed:
 			return False
@@ -601,15 +604,51 @@ class Character(Creature):
 		
 	def add_carried_object(self, item_id, game, quantity=1):
 		if item_id in game.coin_objs:
-			return self.wallet.add_coins(item_id, quantity)
+			success = self.wallet.add_coins(item_id, quantity)
 			
-		return self.inventory.add_item(item_id, quantity)
+		else:
+			success = self.inventory.add_item(item_id, quantity)
+			
+		if success:
+			self.calc_encumbrance(game)
+			
+		return success
 		
 	def remove_carried_object(self, item_id, game, quantity=1):
 		if item_id in game.coin_objs:
-			return self.wallet.remove_coins(item_id, quantity)
+			success = self.wallet.remove_coins(item_id, quantity)
 			
-		return self.inventory.remove_item(item_id, quantity)
+		else:
+			success = self.inventory.remove_item(item_id, quantity)
+			
+		if success:
+			self.calc_encumbrance(game)
+			
+		return success
+		
+	def calc_encumbrance(self, game):
+		self.calc_cur_encumbrance(game)
+		
+		self.calc_max_encumbrance()
+		
+	def calc_cur_encumbrance(self, game):
+		encumbrance = 0
+		
+		for item_id, quantity in self.inventory.get_items():
+			item_type = game.item_type_objs[item_id]
+			encumbrance += item_type.weight * quantity
+			
+		for coin_id, quantity in self.wallet.get_coins():
+			coin_type = game.coin_objs[coin_id]
+			encumbrance += coin_type.weight * quantity
+			
+		self.cur_encumbrance = round(encumbrance, 1)
+		
+	def calc_max_encumbrance(self):
+		self.max_encumbrance = 99 + self.get_skill_lvl("strength")
+		
+	def get_skill_lvl(self, skill):
+		return self.skills[skill]["level"]
 		
 class Player(Character):
 	def __init__(self, race):

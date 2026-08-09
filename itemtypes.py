@@ -14,6 +14,8 @@ class ItemType:
 			"drop",
 		]
 		
+		self.weight = 1
+		
 class BarType(ItemType):
 	def __init__(self, *args):
 		super().__init__()
@@ -38,6 +40,8 @@ class CoinType(ItemType):
 		
 		self.base_value = args[3]
 		
+		self.weight = 0.1
+		
 class OreType(ItemType):
 	def __init__(self, *args):
 		super().__init__()
@@ -58,6 +62,8 @@ class AnimalCorpse(ItemType):
 		
 		self.base_value = 2
 		
+		self.weight = 20
+		
 class AnimalHide(ItemType):
 	def __init__(self):
 		super().__init__()
@@ -71,6 +77,8 @@ class AnimalHide(ItemType):
 		}
 		
 		self.base_value = 2
+		
+		self.weight = 5
 		
 class AnimalLeather(ItemType):
 	def __init__(self):
@@ -86,6 +94,8 @@ class AnimalLeather(ItemType):
 		
 		self.base_value = 4
 		
+		self.weight = 3
+		
 class Coal(ItemType):
 	def __init__(self):
 		super().__init__()
@@ -99,6 +109,8 @@ class Coal(ItemType):
 		}
 		
 		self.base_value = 2
+		
+		self.weight = 3
 		
 class Fruit(ItemType):
 	def __init__(self):
@@ -144,6 +156,8 @@ class AnimalMeat(ItemType):
 			"drop",
 		]
 		
+		self.weight = 5
+		
 class Parchment(ItemType):
 	def __init__(self):
 		super().__init__()
@@ -167,6 +181,8 @@ class Water(ItemType):
 			"drop",
 		]
 		
+		self.weight = 2
+		
 class Wine(ItemType):
 	def __init__(self):
 		super().__init__()
@@ -186,6 +202,8 @@ class Wine(ItemType):
 			"drop",
 		]
 		
+		self.weight = 2
+		
 class Wood(ItemType):
 	def __init__(self):
 		super().__init__()
@@ -193,6 +211,8 @@ class Wood(ItemType):
 		self.id = "wood"
 		
 		self.name = "Wood"
+		
+		self.weight = 5
 		
 ITEM_TYPES = {
 	"animal_corpse": AnimalCorpse(),

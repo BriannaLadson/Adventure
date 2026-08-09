@@ -239,7 +239,7 @@ class CharacterCreationScreen(Screen):
 		
 		currency_quantity = int(self.currency_quantity_var.get())
 		
-		player.wallet.add_coins(currency.id, currency_quantity)
+		player.add_carried_object(currency.id, game, currency_quantity)
 		
 		#Initial Placement
 		if self.start_loc_var.get() == "Random":
@@ -1791,8 +1791,9 @@ class CharacterSheetNotebook(CustomNotebook):
 		self.tabs = {
 			"Crafting": CraftingTab(self, game),
 			"Health": HealthNotebook(self, game),
-			"Inventory": InventoryNotebook(self, game),
+			"Inventory": InventoryTab(self, game),
 			"Memory": MemoryNotebook(self, game),
+			"Stats":StatsTab(self, game),
 		}
 		
 		self.init_tabs()
@@ -1945,6 +1946,24 @@ class LocationsTab(Tab):
 			)
 			lbl.pack(fill=X)
 			
+class InventoryTab(Tab):
+	def __init__(self, parent, game):
+		super().__init__(parent)
+		
+		self.game = game
+		self.player = player = game.player
+		
+		self.encumbrance_bar = ProgressBar(
+			self,
+			value=player.cur_encumbrance,
+			max_value = player.max_encumbrance,
+			text=f"Encumbrance: {player.cur_encumbrance} / {player.max_encumbrance}"
+		)
+		self.encumbrance_bar.pack(pady=5)
+		
+		self.inventory_notebook = InventoryNotebook(self, game)
+		self.inventory_notebook.pack(fill=BOTH, expand=1)
+			
 class InventoryNotebook(CustomNotebook):
 	def __init__(self, parent, game):
 		super().__init__(parent)
@@ -2028,6 +2047,37 @@ class WalletTab(Tab):
 				),
 			)
 			btn.pack(fill=X)
+
+class StatsTab(Tab):
+	def __init__(self, parent, game):
+		super().__init__(parent)
+		
+		self.game = game
+		self.player = game.player
+		
+		self.scrollable_fr = ScrollableFrame(self)
+		self.scrollable_fr.pack(fill=BOTH, expand=1)
+		
+		self.populate()
+		
+	def populate(self):
+		scr_fr = self.scrollable_fr.scrolling_frame
+		helpf.destroy_children_widgets(scr_fr)
+		player = self.player
+		
+		for skill, skill_data in player.skills.items():
+			level = skill_data["level"]
+			value = skill_data["xp"]
+			max_value = skill_data["max_xp"]
+		
+		
+			bar = ProgressBar(
+				scr_fr,
+				value=value,
+				max_value=max_value,
+				text=f"{skill.capitalize()} - Level {level}: {value} / {max_value}"
+			)
+			bar.pack(pady=5)
 
 #Other Widgets		
 class ScrollableFrame(ttk.Frame):
