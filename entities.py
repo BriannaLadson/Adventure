@@ -67,11 +67,27 @@ class Game:
 			
 		return []
 		
-	def get_turn_ticks(self, entity):
+	def get_movement_ticks(self, entity):
 		if entity.is_location_local():
 			return 1
 			
-		return 60
+		base_ticks = self.local_map_size
+		
+		if not isinstance(entity, Character):
+			return base_ticks
+			
+		speed_level = entity.get_skill_lvl("speed")
+		
+		speed_modifier = 1 + ((speed_level - 1) / 100)
+		
+		encumbrance_modifier = 1
+		
+		if entity.cur_encumbrance > entity.max_encumbrance:
+			encumbrance_modifier = (entity.cur_encumbrance / entity.max_encumbrance)
+			
+		movement_ticks = (base_ticks / speed_modifier) * encumbrance_modifier
+			
+		return max(1, round(movement_ticks))
 		
 	def get_location(self, entity):
 		if entity.lx == None or entity.ly == None or entity.lz == None:
@@ -112,11 +128,24 @@ class Game:
 			entity.gy = settlement.gy
 		
 	def move_entity(self, entity, dir):
-		if entity.lx == None and entity.ly == None:
-			self.move_entity_region(entity, dir)
+		is_local = entity.is_location_local()
+		
+		if not is_local:
+			movement_modifier = self.local_map_size
 			
 		else:
-			self.move_entity_tile(entity, dir)
+			movement_modifier = 1
+		
+		if entity.lx == None and entity.ly == None:
+			moved = self.move_entity_region(entity, dir)
+			
+		else:
+			moved = self.move_entity_tile(entity, dir)
+			
+		if isinstance(entity, Character):
+			entity.train_movement(moved, modifier=movement_modifier)
+			
+		return moved
 			
 	def move_entity_region(self, entity, dir):
 		map_size = self.world_size
@@ -131,8 +160,7 @@ class Game:
 			entity.gy = ty
 			entity.last_region_direction = dir
 			
-			#if isinstance(entity, Player):
-			#	self.turns = 60
+			return True
 		
 		except KeyError:
 			if dir == "in":
@@ -177,6 +205,10 @@ class Game:
 				
 				entity.lz = 0
 				
+				return True
+				
+		return False
+				
 	def move_entity_tile(self, entity, dir):
 		map_size = self.local_map_size
 		
@@ -197,16 +229,15 @@ class Game:
 			
 			if local_generator is not None:
 				if not local_generator.is_walkable(tx, ty):
-					return
+					return False
 			
 			entity.lx = tx
 			entity.ly = ty
 			
-			#if isinstance(entity, Player):
-			#	self.turns = 1
+			return True
 			
 		except KeyError:
-			pass
+			return False
 			
 	def generate_civilization(self, race):
 		civilization_name_system_id = race.get_name_system_id("civilization")
@@ -649,6 +680,39 @@ class Character(Creature):
 		
 	def get_skill_lvl(self, skill):
 		return self.skills[skill]["level"]
+		
+	def gain_skill_xp(self, skill_id, modifier=1):
+		skill = self.skills[skill_id]
+		level = skill["level"]
+		
+		max_gain = max(1, int((level * modifier) + 0.5))
+		
+		xp_gain = random.randint(1, max_gain)
+		
+		skill["xp"] += xp_gain
+		
+		while skill["xp"] >= skill["max_xp"]:
+			skill["xp"] -= skill["max_xp"]
+			
+			skill["level"] += 1
+			
+			skill["max_xp"] = (skill["level"] + 1) * 100
+			
+			if skill_id == "strength":
+				self.calc_max_encumbrance()
+				
+		return xp_gain
+		
+	def train_movement(self, moved=True, modifier=1):
+		if self.cur_encumbrance > self.max_encumbrance:
+			encumbrance_modifier = (self.cur_encumbrance / self.max_encumbrance)
+			
+			return self.gain_skill_xp("strength", modifier=modifier * encumbrance_modifier)
+			
+		if moved:
+			return self.gain_skill_xp("speed", modifier=modifier)
+			
+		return 0
 		
 class Player(Character):
 	def __init__(self, race):

@@ -5,9 +5,9 @@ def process_cmd(event, screen, cmd):
 	try:
 		game = screen.game
 		
-		cmd_dict[cmd](screen, cmd)
+		ticks = cmd_dict[cmd](screen, cmd)
 		
-		dead_entities = game.inc_time()
+		dead_entities = game.inc_time(ticks=ticks)
 		
 		if game.player in dead_entities:
 			screen.handle_player_death()
@@ -43,12 +43,14 @@ def move(screen, cmd):
 	
 	screen.update_tile_map = True
 	
+	return game.get_movement_ticks(player)
+	
 def pickup_item(screen, cmd):
 	game = screen.game
 	player = screen.player
 	
 	if player.lx == None or player.ly == None or player.lz == None:
-		return
+		return 1
 	
 	settlement = game.get_settlement_by_coors(player.gx, player.gy)
 	
@@ -59,13 +61,15 @@ def pickup_item(screen, cmd):
 	)
 	
 	if coors not in settlement.dropped_items:
-		return
+		return 1
 		
 	tile_inventory = settlement.dropped_items[coors]
 		
 	second_inv_text = f"Tile ({coors[0]}, {coors[1]}, {coors[2]})"
 		
 	screen.pickup_item(player, tile_inventory, "You", second_inv_text)
+	
+	return 1
 	
 cmd_dict = {
 	"north": move,
