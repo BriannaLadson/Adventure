@@ -247,7 +247,7 @@ class Game:
 		
 		self.civilizations.append(civilization)
 			
-	def generate_settlement(self, civilization, race):
+	def generate_settlement(self, civilization, race, is_capital=False):
 		map_size = self.world_size
 	
 		gx = random.randint(0, map_size - 1)
@@ -269,15 +269,23 @@ class Game:
 		
 		sub_economy = SubEconomy(self.economy)
 		
+		if is_capital:
+			building_rules = race.capital_buildings
+			
+		else:
+			building_rules = race.settlement_buildings
+		
 		settlement = Settlement(
 			gx, gy,
 			civilization,
 			settlement_char, 
 			settlement_char_color,
 			settlement_name,
-			race.settlement_buildings,
+			building_rules,
 			sub_economy,
 		)
+		
+		settlement.is_capital = is_capital
 		
 		settlement.set_start_currency()
 			
@@ -806,6 +814,8 @@ class Settlement:
 		
 		self.currency = civ.culture.currency
 		
+		self.bank_accounts = {}
+		
 		self.resources = {
 			"fauna": random.randint(0, 100),
 			"flora": random.randint(0, 100),
@@ -1121,6 +1131,8 @@ class Race:
 		self.needs = args[13]
 		
 		self.dietary_profile = args[14]
+		
+		self.capital_buildings = args[15]
 		
 	def get_name_system_id(self, name_system_type):
 		name_systems = getattr(self, f"{name_system_type}_name_systems")

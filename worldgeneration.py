@@ -17,10 +17,9 @@ def generate_civilizations(game):
 		
 def generate_capitals(game):
 	for civ in game.civilizations:
-		capital = game.generate_settlement(civ, civ.culture)
+		capital = game.generate_settlement(civ, civ.culture, is_capital=True)
 		
 		if not capital == None:
-			capital.is_capital = True
 			civ.capital = capital
 			
 def generate_settlements(game):

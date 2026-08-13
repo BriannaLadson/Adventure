@@ -196,6 +196,7 @@ def load_races(game, data):
 			race_data["settlement_currency"],
 			race_data["needs"],
 			race_data["dietary_profile"],
+			race_data["capital_buildings"],
 		)
 		
 		race_objs[id] = race_obj

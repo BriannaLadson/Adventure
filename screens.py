@@ -279,6 +279,7 @@ class PlayScreen(Screen):
 		
 		self.building_popup_types = {
 			"trade": TradePopup,
+			"bank": BankPopup,
 		}
 		
 		#Info Frame
@@ -1317,6 +1318,32 @@ class DropQuantityPopup(Popup):
 		self.destroy()
 
 		self.callback(quantity)
+
+class BankPopup(Popup):
+	def __init__(self, root, building):
+		super().__init__(root)
+		
+		self.play_screen = play_screen = None
+		
+		if hasattr(root, "play_screen"):
+			self.play_screen = play_screen = root.play_screen
+			
+		self.game = game = self.play_screen.game
+		self.player = player = game.player
+			
+		self.building = building
+		
+		self.settlement = settlement = building.settlement
+		
+		ttk.Label(self, text=f"Bank of {settlement.civilization.name}", anchor="center").pack(fill=X)
+		
+		ttk.Button(self, text="OK", command=self.close).pack(fill=X)
+		
+	def close(self):
+		if self.play_screen is not None:
+			self.play_screen.can_process_input = True
+			
+		self.destroy()
 
 #Widgets
 class ScrollableListbox(ttk.Frame):

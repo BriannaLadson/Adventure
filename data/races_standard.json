@@ -19,8 +19,25 @@
 		"settlement_name_systems": [
 			"human_settlement_names"
 		],
+		"capital_buildings": {
+			"market_building": {
+				"min_quantity": 1,
+				"max_quantity": 1,
+				"priority": 100
+			},
+			"bank_building": {
+				"min_quantity": 1,
+				"max_quantity": 1,
+				"priority": 100
+			}
+		},
 		"settlement_buildings": {
 			"market_building": {
+				"min_quantity": 1,
+				"max_quantity": 1,
+				"priority": 100
+			},
+			"bank_building": {
 				"min_quantity": 1,
 				"max_quantity": 1,
 				"priority": 100
@@ -76,8 +93,25 @@
 		"settlement_name_systems": [
 			"dwarf_settlement_names"
 		],
+		"capital_buildings": {
+			"market_building": {
+				"min_quantity": 1,
+				"max_quantity": 1,
+				"priority": 100
+			},
+			"bank_building": {
+				"min_quantity": 1,
+				"max_quantity": 1,
+				"priority": 100
+			}
+		},
 		"settlement_buildings": {
 			"market_building": {
+				"min_quantity": 1,
+				"max_quantity": 1,
+				"priority": 100
+			},
+			"bank_building": {
 				"min_quantity": 1,
 				"max_quantity": 1,
 				"priority": 100
