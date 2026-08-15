@@ -1,9 +1,11 @@
 import entities
+import institutions
 
 def generate_world(game):
 	generate_civilizations(game)
 	generate_capitals(game)
 	generate_settlements(game)
+	generate_institutions(game)
 	
 	for _ in range(game.initial_production_cycles):
 		game.run_settlement_production()
@@ -29,3 +31,8 @@ def generate_settlements(game):
 			
 			if not settlement == None:
 				civ.settlements.append(settlement)
+				
+def generate_institutions(game):
+	for settlement in game.settlements:
+		if settlement.has_building("bank_building"):
+			settlement.bank = institutions.Bank(settlement)

@@ -693,7 +693,9 @@ class Character(Creature):
 		skill = self.skills[skill_id]
 		level = skill["level"]
 		
-		max_gain = max(1, int((level * modifier) + 0.5))
+		base_max_gain = max(1, 101 - level)
+		
+		max_gain = max(1, int((base_max_gain * modifier) + 0.5))
 		
 		xp_gain = random.randint(1, max_gain)
 		
@@ -814,7 +816,7 @@ class Settlement:
 		
 		self.currency = civ.culture.currency
 		
-		self.bank_accounts = {}
+		self.bank = None
 		
 		self.resources = {
 			"fauna": random.randint(0, 100),
@@ -888,6 +890,9 @@ class Settlement:
 		coins = random.randint(min_coins, max_coins)
 		
 		self.wallet.add_coins(currency, coins)
+		
+	def has_building(self, building_id):
+		return building_id in self.building_rules
 		
 class TownMapGenerator:
 	def __init__(self, game, settlement, seed, map_size):

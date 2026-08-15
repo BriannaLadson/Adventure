@@ -10,6 +10,8 @@ import dataparsing
 import entities
 import commands
 import worldgeneration as worldgen
+from screenwidgets import Popup, CustomNotebook, Tab
+import buildingscreens
 
 #Screens
 class Screen(ttk.Frame):
@@ -278,8 +280,8 @@ class PlayScreen(Screen):
 		self.update_tile_map = False
 		
 		self.building_popup_types = {
-			"trade": TradePopup,
-			"bank": BankPopup,
+			"trade": buildingscreens.TradePopup,
+			"bank": buildingscreens.BankPopup,
 		}
 		
 		#Info Frame
@@ -485,31 +487,7 @@ class PlayScreen(Screen):
 		popup = InventoryTransferPopup(root, game, first_inventory, second_inventory, first_inv_text, second_inv_text, first_is_character=True)
 		popup.center()
 
-#Popups
-class Popup(Toplevel):
-	def __init__(self, root):
-		super().__init__(root)
-		
-		self.root = root
-		
-		self.overrideredirect(True)
-		
-		self.grab_set()
-		
-	def center(self):
-		self.update_idletasks()
-		
-		sw = self.winfo_screenwidth()
-		sh = self.winfo_screenheight()
-		
-		tw = self.winfo_width()
-		th = self.winfo_height()
-		
-		x = (sw // 2) - (tw // 2)
-		y = (sh // 2) - (th // 2)
-		
-		self.geometry(f"{tw}x{th}+{x}+{y}")
-		
+#Popups	
 class EnterSaveNamePopup(Popup):
 	def __init__(self, root):
 		super().__init__(root)
@@ -632,58 +610,7 @@ class SimplePopup(Popup):
 			
 		self.destroy()
 		
-class TradePopup(Popup):
-	def __init__(self, root, building):
-		super().__init__(root)
-		
-		self.play_screen = play_screen = None
-		
-		if hasattr(root, "play_screen"):
-			self.play_screen = play_screen = root.play_screen
-			
-		self.game = game = self.play_screen.game
-		self.player = player = game.player
-			
-		self.building = building
-		
-		self.settlement = settlement = building.settlement
-		
-		sub_economy = settlement.sub_economy
-		
-		self.currency_type = currency_type = settlement.currency
-		self.currency_name = currency_name = game.coin_objs[currency_type].name
-		self.settlement_currency_quantity = settlement_currency_quantity = settlement.wallet.get_quantity(currency_type)
-		
-		self.settlement_currency_var = StringVar(value=f"{building.get_name()} ({currency_name}: {settlement_currency_quantity})")	
-		ttk.Label(self, textvariable=self.settlement_currency_var, anchor="center").pack(fill=X)
-		
-		self.player_currency_quantity = player_currency_quantity = player.wallet.get_quantity(currency_type)
-		
-		self.player_currency_var = StringVar(value=f"You ({currency_name}: {player_currency_quantity})")
-		ttk.Label(self, textvariable=self.player_currency_var, anchor="center").pack(fill=X)
-		
-		self.trade_nb = TradeNotebook(self, root, building)
-		self.trade_nb.pack(fill=BOTH, expand=1)
-		
-		ttk.Button(self, text="OK", command=self.close).pack(fill=X)
-		
-	def close(self):
-		if self.play_screen is not None:
-			self.play_screen.can_process_input = True
-			
-		self.destroy()
-		
-	def update_popup(self):
-		settlement = self.settlement
-		player = self.player
-		currency_type = self.currency_type
-		currency_name = self.currency_name
-		
-		self.settlement_currency_quantity = settlement_currency_quantity = settlement.wallet.get_quantity(currency_type)
-		self.player_currency_quantity = player_currency_quantity = player.wallet.get_quantity(currency_type)
-		
-		self.settlement_currency_var.set(f"{self.building.get_name()} ({currency_name}: {settlement_currency_quantity})")
-		self.player_currency_var.set(f"You ({currency_name}: {player_currency_quantity})")
+
 		
 class CharacterSheetPopup(Popup):
 	def __init__(self, event, root, game):
@@ -1319,32 +1246,6 @@ class DropQuantityPopup(Popup):
 
 		self.callback(quantity)
 
-class BankPopup(Popup):
-	def __init__(self, root, building):
-		super().__init__(root)
-		
-		self.play_screen = play_screen = None
-		
-		if hasattr(root, "play_screen"):
-			self.play_screen = play_screen = root.play_screen
-			
-		self.game = game = self.play_screen.game
-		self.player = player = game.player
-			
-		self.building = building
-		
-		self.settlement = settlement = building.settlement
-		
-		ttk.Label(self, text=f"Bank of {settlement.civilization.name}", anchor="center").pack(fill=X)
-		
-		ttk.Button(self, text="OK", command=self.close).pack(fill=X)
-		
-	def close(self):
-		if self.play_screen is not None:
-			self.play_screen.can_process_input = True
-			
-		self.destroy()
-
 #Widgets
 class ScrollableListbox(ttk.Frame):
 	def __init__(self, parent):
@@ -1381,21 +1282,7 @@ class WorldSettingsNotebook(ttk.Notebook):
 		
 		self.region_tab = RegionTab(self, game)
 		self.add(self.region_tab, text="Local")
-		
-class CustomNotebook(ttk.Notebook):
-	def __init__(self, parent):
-		super().__init__(parent)
-		
-		self.tabs = {}
-		
-	def init_tabs(self):
-		for tab_name, tab in self.tabs.items():
-			self.add(tab, text=tab_name)
-		
-class Tab(ttk.Frame):
-	def __init__(self, parent):
-		super().__init__(parent)
-		
+	
 class OverworldTab(Tab):
 	def __init__(self, parent, game):
 		super().__init__(parent)
@@ -2498,201 +2385,7 @@ class TileMap(Canvas):
 		else:
 			return self.player.lx, self.player.ly
 		
-class TradeNotebook(CustomNotebook):
-	def __init__(self, parent, root, building):
-		super().__init__(parent)
-		
-		self.parent = parent
-		self.root = root
-		self.building = building
-		
-		self.tabs = {
-			"Buy": BuyItemTab(self),
-			"Sell": SellItemTab(self),
-		}
-		
-		self.init_tabs()
-		
-	def update_tabs(self):
-		self.parent.update_popup()
-		
-		for tab in self.tabs.values():
-			tab.update_tab()
-		
-class BuyItemTab(Tab):
-	def __init__(self, parent):
-		super().__init__(parent)
-		
-		self.trade_nb = parent
-		self.root = parent.root
-		self.game = self.root.play_screen.game
-		self.player = self.game.player
-		self.settlement = parent.building.settlement
-		
-		self.grid = TradeGrid(self, self.settlement.sub_economy, self.game)
-		self.grid.pack(fill=BOTH, expand=1)
-		
-		ttk.Button(self, text="Buy Item", command=self.buy_item).pack(fill=X)
-		
-	def buy_item(self):
-		item_id = self.grid.get_selected_item()
-		
-		if item_id is None:
-			return
-			
-		success = self.game.buy_item(self.player, self.settlement, item_id)
-		
-		if success:
-			self.trade_nb.update_tabs()
-			
-	def update_tab(self):
-		self.grid.populate_items()
-		
-class SellItemTab(Tab):
-	def __init__(self, parent):
-		super().__init__(parent)
 
-		self.trade_nb = parent
-		self.root = parent.root
-		self.game = self.root.play_screen.game
-		self.player = self.game.player
-		self.settlement = parent.building.settlement
-
-		self.grid = PlayerInventoryGrid(
-			self,
-			self.player,
-			self.game,
-			self.settlement,
-		)
-		self.grid.pack(fill=BOTH, expand=1)
-
-		ttk.Button(
-			self,
-			text="Sell Item",
-			command=self.sell_item
-		).pack(fill=X)
-
-	def sell_item(self):
-		item_id = self.grid.get_selected_item()
-
-		if item_id is None:
-			return
-
-		success = self.game.sell_item(
-			self.player,
-			self.settlement,
-			item_id
-		)
-
-		if success:
-			self.trade_nb.update_tabs()
-
-	def update_tab(self):
-		self.grid.populate_items()
-		
-class TradeGrid(ttk.Treeview):
-	def __init__(self, parent, sub_economy, game):
-		super().__init__(parent)
-		
-		columns = ("item", "quantity", "price", "creator")
-		
-		super().__init__(parent, columns=columns, show="headings")
-		
-		self.sub_economy = sub_economy
-		self.game = game
-		
-		self.heading("item", text="Item")
-		self.heading("quantity", text="Quantity")
-		self.heading("price", text="Price")
-		self.heading("creator", text="Creator")
-		
-		for col in columns:
-			self.column(col, width=120, anchor="center", stretch=True)
-			
-		self.populate_items()
-		
-	def populate_items(self):
-		for row in self.get_children():
-			self.delete(row)
-			
-		inventory = getattr(self.sub_economy, "inventory", {})
-		
-		for item_type_id, quantity in inventory.items():
-			if quantity <= 0:
-				continue
-				
-			item_type = self.game.item_type_objs[item_type_id]
-			price = self.sub_economy.get_value(item_type_id)
-			
-	
-			self.insert(
-				"",
-				"end",
-				iid=item_type_id,
-				values=(
-					item_type.name,
-					quantity,
-					price,
-					item_type.creator,
-				),
-			)
-			
-	def get_selected_item(self):
-		selected = self.selection()
-		
-		if not selected:
-			return None
-			
-		return selected[0]
-		
-class PlayerInventoryGrid(ttk.Treeview):
-	def __init__(self, parent, player, game, settlement):
-		columns = ("item", "quantity", "price")
-		
-		super().__init__(parent, columns=columns, show="headings")
-		
-		self.player = player
-		self.game = game
-		self.settlement = settlement
-		
-		self.heading("item", text="Item")
-		self.heading("quantity", text="Quantity")
-		self.heading("price", text="Price")
-		
-		for col in columns:
-			self.column(col, width=120, anchor="center", stretch=True)
-			
-		self.populate_items()
-		
-	def populate_items(self):
-		for row in self.get_children():
-			self.delete(row)
-			
-		for item_type_id, quantity in self.player.inventory.get_items():
-			if quantity <= 0:
-				continue
-				
-			item_type = self.game.item_type_objs[item_type_id]
-			price = self.settlement.sub_economy.get_value(item_type_id)
-			
-			self.insert(
-				"",
-				"end",
-				iid=item_type_id,
-				values=(
-					item_type.name,
-					quantity,
-					price,
-				),
-			)
-			
-	def get_selected_item(self):
-		selected = self.selection()
-		
-		if not selected:
-			return None
-			
-		return selected[0]		
 		
 class ProgressBar(Canvas):
 	def __init__(self, parent, value=100, max_value=100, fill_color="green", text=None):
