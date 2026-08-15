@@ -1,4 +1,4 @@
-# Adventure v0.13.1
+# Adventure v0.14.0
 
 Adventure is an open-world sandbox RPG simulation built using Python and Tkinter.
 
@@ -20,6 +20,11 @@ For more information on game systems, modding, and development, see the project 
 - Item weight and character encumbrance system
 - Multi-currency wallet system with civilization-specific currencies
 - Trading with procedurally generated markets and dynamic pricing
+- Banks with settlement-based currency reserves
+- Currency exchange between civilization-specific currencies
+- Procedurally generated currency exchange fees
+- Checking accounts with procedurally generated minimum opening deposits
+- Checking account deposits, withdrawals, balances, and account closure
 - Data-driven architecture designed for expansion and modding
 
 ## Screenshots
