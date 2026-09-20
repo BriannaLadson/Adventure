@@ -1,0 +1,8 @@
+{
+	"apple": {
+		"name": "Apple",
+		"base_value": 2,
+		"weight": 1,
+		"can_forage": true
+	}
+}
