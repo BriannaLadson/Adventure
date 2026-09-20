@@ -4,6 +4,7 @@ from cqcalendar import CQCalendar
 
 import entities
 import itemtypes
+import professions
 
 def load_data(game, data_path="data"):
 	for file in os.listdir(data_path):
@@ -26,6 +27,7 @@ def load_data(game, data_path="data"):
 			loader_func(game, data)
 			
 	game.resolve_data_references()
+	game.assign_crafting_reactions()
 
 #World Settings		
 def load_world_settings(game, data):
@@ -135,6 +137,23 @@ def load_dietary_profiles(game, data):
 		
 	game.dietary_profile_objs = dietary_profile_objs
 	
+def load_fruits(game, data):
+	for fruit in data:
+		id = fruit
+		
+		fruit_data = data[fruit]
+		
+		fruit_obj = itemtypes.FruitType(
+			id = id,
+			name = fruit_data["name"],
+			base_value = fruit_data.get("base_value", 1),
+			weight = fruit_data.get("weight", 1),
+			can_forage = fruit_data.get("can_forage", False),
+		)
+		
+		game.fruit_objs[id] = fruit_obj
+		game.item_type_objs[id] = fruit_obj
+	
 def load_name_systems(game, data):
 	name_system_objs = {}
 	
@@ -172,6 +191,20 @@ def load_ores(game, data):
 	
 	game.ore_objs = ore_objs
 	
+def load_professions(game, data):
+	for profession in data:
+		id = profession
+		
+		profession_data = data[profession]
+		
+		profession_obj = professions.CustomProfession(
+			id,
+			profession_data["name"]
+		)
+		
+		game.profession_objs[id] = profession_obj
+	
+	
 def load_races(game, data):
 	race_objs = {}
 	
@@ -203,11 +236,31 @@ def load_races(game, data):
 		
 	game.race_objs = race_objs
 	
+def load_skills(game, data):
+	skill_objs = {}
+	
+	for skill in data:
+		id = skill
+		
+		skill_data = data[skill]
+		
+		skill_obj = entities.Skill(
+			id,
+			skill_data["name"],
+		)
+		
+		skill_objs[id] = skill_obj
+	
+	game.skill_objs = skill_objs
+	
 PREFIX_LOADERS = {
 	"bars_": load_bars,
 	"coins_": load_coins,
 	"dietaryprofiles_": load_dietary_profiles,
+	"fruits_": load_fruits,
 	"namesystems_": load_name_systems,
 	"ores_": load_ores,
+	"professions_": load_professions,
 	"races_": load_races,
+	"skills_": load_skills,
 }

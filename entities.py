@@ -12,6 +12,7 @@ import itemtypes
 import buildingtypes
 import items
 import inventory
+import crafting
 
 class Game:
 	def __init__(self, save_path):
@@ -37,6 +38,11 @@ class Game:
 		
 		self.building_type_objs = buildingtypes.BUILDING_TYPES
 		
+		self.crafting_reaction_objs = {}
+		self.wine_reaction_objs = {}
+		
+		self.fruit_objs = {}
+		
 		self.profession_objs = professions.PROFESSIONS
 		
 		self.item_type_objs = itemtypes.ITEM_TYPES.copy()
@@ -45,6 +51,12 @@ class Game:
 		
 		self.initial_production_cycles = 1
 		
+		self.skills = {
+			"brewing": "Brewing",
+			"strength": "Strength",
+			"speed": "Speed",
+		}
+		
 	def init_economy(self):
 		base_values = {}
 		
@@ -52,6 +64,9 @@ class Game:
 			base_values[key] = val.base_value
 			
 		self.economy = Economy(base_values=base_values)
+		
+	def init_item_types(self):
+		self.item_type_objs = itemtypes.ITEM_TYPES.copy()
 		
 	def inc_time(self, ticks=None):
 		if ticks is None:
@@ -452,12 +467,62 @@ class Game:
 	def resolve_data_references(self):
 		self.resolve_race_references()
 		
+		self.link_forageable_items_to_forager()
+		
+		self.generate_wines()
+		self.generate_wine_reactions()
+		
 	def resolve_race_references(self):
 		for race in self.race_objs.values():
 			dietary_profile_id = race.dietary_profile
 			
 			race.dietary_profile = self.dietary_profile_objs[dietary_profile_id]
-	
+			
+	def link_forageable_items_to_forager(self):
+		forageable_items = [
+			item_id
+			for item_id, item_type in self.item_type_objs.items()
+			if item_type.can_forage
+		]
+		
+		self.profession_objs["forager"].outputs = forageable_items
+		
+	def generate_wines(self):
+		self.wine_objs = {}
+		
+		for fruit in self.fruit_objs.values():
+			wine = itemtypes.WineType(fruit)
+			
+			self.wine_objs[wine.id] = wine
+			self.item_type_objs[wine.id] = wine
+			
+	def generate_wine_reactions(self):
+		for fruit_id, fruit in self.fruit_objs.items():
+			wine_id = f"{fruit_id}_wine"
+			wine = self.wine_objs[wine_id]
+			
+			reaction = crafting.CraftingReaction(
+				id = f"make_{wine_id}",
+				name = f"Make {wine.name}",
+				reagents = {
+					fruit_id: 1,
+				},
+				products = {
+					wine_id: 1,
+				}
+			)
+			
+			self.wine_reaction_objs[reaction.id] = reaction
+			self.crafting_reaction_objs[reaction.id] = reaction
+			
+	def assign_crafting_reactions(self):
+		self.assign_brewer_reactions()
+			
+	def assign_brewer_reactions(self):
+		brewer = self.profession_objs["brewer"]
+		
+		brewer.crafting_reactions = list(self.wine_reaction_objs.values())
+			
 class Entity:
 	def __init__(self):
 		self.gx = 0
@@ -484,7 +549,7 @@ class Creature(Entity):
 		self.memory = Memory()
 		
 class Character(Creature):
-	def __init__(self, race):
+	def __init__(self, race, skills):
 		super().__init__()
 		
 		self.race = race
@@ -492,8 +557,6 @@ class Character(Creature):
 		self.needs = {
 			need_id: need_data["max"] for need_id, need_data in race.needs.items()
 		}
-		
-		
 		
 		self.need_warnings = {
 			need_id: False for need_id in self.needs
@@ -505,18 +568,15 @@ class Character(Creature):
 		
 		self.alive = True
 		
-		self.skills = {
-			"strength": {
+		self.skills = {}
+		
+		for skill_id, skill_name in skills.items():
+			self.skills[skill_id] = {
+				"name": skill_name,
 				"level": 1,
 				"xp": 0,
-				"max_xp": 200,
-			},
-			"speed": {
-				"level": 1,
-				"xp": 0,
-				"max_xp": 200,
+				"max_xp": 200
 			}
-		}
 		
 		self.dietary_profile = race.dietary_profile.copy()
 		
@@ -533,7 +593,7 @@ class Character(Creature):
 				self.needs[need_id] = 0
 				
 	def consume_item(self, item_id, game):
-		need_values = self.dietary_profile.items.get(item_id)
+		need_values = self.get_item_need_values(item_id, game)
 		
 		if not need_values:
 			return False
@@ -555,7 +615,7 @@ class Character(Creature):
 		
 		for need_id in self.needs:
 			while self.needs[need_id] <= threshold:
-				item_id = self.find_item_for_need(need_id)
+				item_id = self.find_item_for_need(need_id, game)
 				
 				if item_id is None:
 					break
@@ -567,12 +627,12 @@ class Character(Creature):
 				
 		return consumed_items
 		
-	def find_item_for_need(self, need_id):
+	def find_item_for_need(self, need_id, game):
 		for item_id, quantity in self.inventory.get_items():
 			if quantity <= 0:
 				continue
 				
-			effects = self.dietary_profile.items.get(item_id, {})
+			effects = self.get_item_need_values(item_id, game)
 			amount = effects.get(need_id, 0)
 			
 			if amount > 0:
@@ -724,9 +784,14 @@ class Character(Creature):
 			
 		return 0
 		
+	def get_item_need_values(self, item_id, game):
+		item_type = game.item_type_objs[item_id]
+		
+		return self.dietary_profile.get_need_values(item_type)
+		
 class Player(Character):
-	def __init__(self, race):
-		super().__init__(race)
+	def __init__(self, race, skill_objs):
+		super().__init__(race, skill_objs)
 		
 		self.char = '@'
 
@@ -1020,6 +1085,8 @@ class Civilization:
 class Memory:
 	def __init__(self):
 		self.known_locations = {}
+		
+		self.known_crafting_recipes = {}
 
 class Wallet:
 	def __init__(self, coins=None):
@@ -1080,6 +1147,16 @@ class DietaryProfile:
 		self.id = args[0]
 		
 		self.items = args[1]
+		
+	def get_need_values(self, item_type):
+		need_values = self.items.get(item_type.id)
+		
+		if need_values is not None:
+			return need_values
+			
+		type_id = getattr(item_type, "type_id", item_type.id)
+			
+		return self.items.get(type_id, {})
 		
 	def copy(self):
 		return DietaryProfile(
@@ -1147,3 +1224,9 @@ class Race:
 			
 		else:
 			return None
+			
+class Skill:
+	def __init__(self, *args):
+		self.id = args[0]
+		
+		self.name = args[1]

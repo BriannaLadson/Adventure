@@ -8,37 +8,62 @@ class Profession:
 		
 		self.outputs = []
 		
+		self.crafting_reactions = []
+		
 		self.can_craft = True
+		
+		self.skill = None
 		
 	def produce(self, settlement, game):
 		sub_economy = settlement.sub_economy
 		workers = settlement.get_active_workers(self)
+		
+		if not self.crafting_reactions and not self.outputs:
+			return
 
 		for _ in range(workers):
-			item_id = random.choice(self.outputs)
-			item_type = game.item_type_objs[item_id]
-			reagents = getattr(item_type, "reagents", {})
-
-			if not reagents:
-				sub_economy.add_item(item_id)
-				continue
+			if self.crafting_reactions:
+				reaction = random.choice(
+					self.crafting_reactions
+				)
+				
+				reagents = reaction.reagents
+				products = reaction.products
+				
+			else:
+				item_id = random.choice(self.outputs)
+				item_type = game.item_type_objs[item_id]
+				
+				reagents = getattr(item_type, "reagents", {})
+				
+				products = {item_id: 1}
 
 			can_make = all(
-				sub_economy.has_item(reagent_id, amount)
-				for reagent_id, amount in reagents.items()
+				sub_economy.has_item(reagent_id, quantity)
+				for reagent_id, quantity in reagents.items()
 			)
-
+			
 			if can_make:
-				for reagent_id, amount in reagents.items():
-					sub_economy.remove_item(reagent_id, amount)
-					sub_economy.change_modifier(reagent_id, -amount)
-
-				sub_economy.add_item(item_id)
-
+				for reagent_id, quantity in reagents.items():
+					sub_economy.remove_item(reagent_id, quantity)
+					
+					sub_economy.change_modifier(reagent_id, -quantity)
+					
+				for product_id, quantity in products.items():
+					sub_economy.add_item(product_id, quantity)
+					
 			else:
-				for reagent_id, amount in reagents.items():
-					if not sub_economy.has_item(reagent_id, amount):
-						sub_economy.change_modifier(reagent_id, amount)
+				for reagent_id, quantity in reagents.items():
+					if not sub_economy.has_item(reagent_id, quantity):
+						sub_economy.change_modifier(reagent_id, quantity)
+		
+class CustomProfession(Profession):
+	def __init__(self, *args):
+		super().__init__()
+		
+		self.id = args[0]
+		
+		self.name = args[1]
 		
 class Hunter(Profession):
 	def __init__(self):

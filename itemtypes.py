@@ -1,20 +1,56 @@
 class ItemType:
-	def __init__(self):
-		self.id = "item_type"
+	def __init__(
+		self,
+		id = "item_type",
+		name = "Item Type",
+		base_value = 1,
+		weight = 1,
+		categories = None,
+		actions = None,
+		description = "",
+		properties = None,
+		can_forage = False,
+		type_id=None,
+	):
+		self.id = id
 		
-		self.name = "Item Type"
+		self.name = name
 		
-		self.base_value = 1
+		self.type_id = type_id or id
 		
-		self.creator = None
+		self.base_value = base_value
 		
-		self.description = ""
+		self.weight = weight
 		
-		self.actions = [
+		self.categories = categories or []
+		
+		self.actions = actions or [
 			"drop",
 		]
 		
-		self.weight = 1
+		self.description = description
+		
+		self.properties = properties or {}
+		
+		self.can_forage = can_forage
+		
+		self.creator = None
+		
+class WineType(ItemType):
+	VALUE_MULTIPLIER = 2
+	
+	def __init__(self, fruit):
+		super().__init__(
+			id = f"{fruit.id}_wine",
+			name = f"{fruit.name} Wine",
+			type_id = "wine",
+			base_value = fruit.base_value * self.VALUE_MULTIPLIER,
+			weight = 2,
+		)
+		
+		self.fruit = fruit.id
+		
+
 		
 class BarType(ItemType):
 	def __init__(self, *args):
@@ -41,6 +77,24 @@ class CoinType(ItemType):
 		self.base_value = args[3]
 		
 		self.weight = 0.1
+		
+class FruitType(ItemType):
+	def __init__(
+		self,
+		id,
+		name,
+		base_value = 1,
+		weight = 1,
+		can_forage = True,
+	):
+		super().__init__(
+			id = id,
+			name = name,
+			type_id = "fruit",
+			base_value = base_value,
+			weight = weight,
+			can_forage = can_forage,
+		)
 		
 class OreType(ItemType):
 	def __init__(self, *args):
@@ -112,20 +166,6 @@ class Coal(ItemType):
 		
 		self.weight = 3
 		
-class Fruit(ItemType):
-	def __init__(self):
-		super().__init__()
-		
-		self.id = "fruit"
-		
-		self.name = "Fruit"
-		
-		self.base_value = 2
-		
-		self.actions = [
-			"consume",
-			"drop",
-		]
 		
 class Ink(ItemType):
 	def __init__(self):
@@ -220,7 +260,6 @@ ITEM_TYPES = {
 	"animal_leather": AnimalLeather(),
 	"animal_meat": AnimalMeat(),
 	"coal": Coal(),
-	"fruit": Fruit(),
 	"ink": Ink(),
 	"parchment": Parchment(),
 	"water": Water(),

@@ -233,7 +233,7 @@ class CharacterCreationScreen(Screen):
 		race_name = self.race_var.get()
 		race = self.race_options[race_name]
 		
-		player = game.player = entities.Player(race)
+		player = game.player = entities.Player(race, game.skills)
 		
 		#Currency
 		currency_name = self.currency_var.get()
@@ -652,7 +652,7 @@ class ItemPopup(Popup):
 		
 		# Needs
 		player = game.player
-		need_values = player.dietary_profile.items.get(item_id, {})
+		need_values = player.get_item_need_values(item_id, game)
 		
 		if need_values:
 			for need_id, amount in need_values.items():
@@ -669,10 +669,15 @@ class ItemPopup(Popup):
 			"drop": self.drop_item,
 		}
 		
-		actions = getattr(item, "actions", [])
+		actions = list(getattr(item, "actions", []))
 		
-		if "consume" in actions and item_id not in player.dietary_profile.items:
-			actions.remove("consume")
+		if need_values:
+			if "consume" not in actions:
+				actions.append("consume")
+				
+		else:
+			if "consume" in actions:
+				actions.remove("consume")
 		
 		if actions:
 			self.scrollable_frame = ScrollableFrame(self)
@@ -1980,6 +1985,7 @@ class StatsTab(Tab):
 		player = self.player
 		
 		for skill, skill_data in player.skills.items():
+			skill_name = skill_data["name"]
 			level = skill_data["level"]
 			value = skill_data["xp"]
 			max_value = skill_data["max_xp"]
@@ -1989,7 +1995,7 @@ class StatsTab(Tab):
 				scr_fr,
 				value=value,
 				max_value=max_value,
-				text=f"{skill.capitalize()} - Level {level}: {value} / {max_value}"
+				text=f"{skill_name.capitalize()} - Level {level}: {value} / {max_value}"
 			)
 			bar.pack(pady=5)
 
