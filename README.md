@@ -1,4 +1,4 @@
-# Adventure v0.15.0
+# Adventure v0.16.0
 
 Adventure is an open-world sandbox RPG simulation built using Python and Tkinter.
 
@@ -8,7 +8,14 @@ For more information on game systems, modding, and development, see the project 
 
 ## Current Features
 - Procedurally generated worlds, civilizations, settlements, and local maps
-- Dynamic economy with production chains, supply & demand, and settlement inventories
+- Overworld regions with biome-specific environmental resources
+- Regional fauna, flora, minerals, trees, and water availability
+- Biome-specific fruit availability and foraging
+- Multiple fruit and wine varieties
+- Automatically generated fruit wines and crafting reactions
+- Brewing and other resource-based professions
+- Town and wilderness maps that reflect their regional biome
+- Dynamic economy with production chains, supply and demand, and settlement inventories
 - Exploration, cartography, and location discovery
 - Character needs with race-specific dietary requirements
 - Character stats with skill XP, leveling, and progression
