@@ -94,6 +94,7 @@ def load_biome_objs(game):
 			biome["id"],
 			biome["name"],
 			biome["color"],
+			biome["resources"],
 		)
 		
 		biome_objs[id] = biome_obj
@@ -149,6 +150,7 @@ def load_fruits(game, data):
 			base_value = fruit_data.get("base_value", 1),
 			weight = fruit_data.get("weight", 1),
 			can_forage = fruit_data.get("can_forage", False),
+			biomes = fruit_data.get("biomes", []),
 		)
 		
 		game.fruit_objs[id] = fruit_obj

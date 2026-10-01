@@ -31,6 +31,8 @@ class Game:
 			"east": [1, 0],
 		}
 		
+		self.regions = {}
+		
 		self.location_map = []
 		
 		self.civilizations = []
@@ -271,9 +273,9 @@ class Game:
 		if self.location_map[gy][gx] is not None:
 			return None
 		
-		biome = self.overworld_generator.get_biome(gx, gy)
+		region = self.get_region(gx, gy)
 		
-		if not biome["id"] in race.settlement_biomes:
+		if region.biome.id not in race.settlement_biomes:
 			return None
 			
 		settlement_char = race.settlement_char
@@ -298,6 +300,7 @@ class Game:
 			settlement_name,
 			building_rules,
 			sub_economy,
+			region,
 		)
 		
 		settlement.is_capital = is_capital
@@ -522,6 +525,17 @@ class Game:
 		brewer = self.profession_objs["brewer"]
 		
 		brewer.crafting_reactions = list(self.wine_reaction_objs.values())
+		
+	def get_region(self, gx, gy):
+		coordinates = (gx, gy)
+		
+		if coordinates not in self.regions:
+			biome_data = self.overworld_generator.get_biome(gx, gy)
+			biome = self.biome_objs[biome_data["id"]]
+			
+			self.regions[coordinates] = Region(gx, gy, biome)
+			
+		return self.regions[coordinates]
 			
 class Entity:
 	def __init__(self):
@@ -796,6 +810,21 @@ class Player(Character):
 		self.char = '@'
 
 #Map
+class Region:
+	def __init__(self, gx, gy, biome):
+		self.gx = gx
+		self.gy = gy
+		
+		self.biome = biome
+		
+		self.resources = {
+			resource_id: random.randint(
+				resource_range[0], 
+				resource_range[1]
+			)
+			for resource_id, resource_range in biome.resource_ranges.items()
+		}
+
 class Building:
 	def __init__(self, building_data, building_type, settlement=None):
 		self.id = building_data["id"]
@@ -852,7 +881,7 @@ class LocalMapGenerator:
 		return x,y
 		
 class Settlement:
-	def __init__(self, gx, gy, civ, char, char_color, name="Settlement", building_rules=None, sub_economy=None):
+	def __init__(self, gx, gy, civ, char, char_color, name="Settlement", building_rules=None, sub_economy=None, region=None):
 		self.gx = gx
 		self.gy = gy
 		
@@ -883,13 +912,9 @@ class Settlement:
 		
 		self.bank = None
 		
-		self.resources = {
-			"fauna": random.randint(0, 100),
-			"flora": random.randint(0, 100),
-			"mineral": random.randint(0, 100),
-			"trees": random.randint(0, 100),
-			"water": random.randint(0, 100),
-		}
+		self.region = region
+		
+		self.resources = self.region.resources
 		
 		self.dropped_items = {}
 		
@@ -965,6 +990,8 @@ class TownMapGenerator:
 		
 		self.settlement = settlement
 		
+		self.region = region = settlement.region
+		
 		self.seed = seed
 
 		self.map_size = map_size
@@ -981,6 +1008,7 @@ class TownMapGenerator:
 			building_types=building_types,
 			map_size=map_size,
 			seed=seed,
+			ground_color=region.biome.color
 		)
 		
 		self.generate_map()
@@ -1001,7 +1029,7 @@ class TownMapGenerator:
 		tile = self.map_array[y][x]
 		
 		if tile == TownForge.GROUND:
-			return "#3E7C3C"
+			return self.generator.ground_color
 			
 		elif tile == TownForge.BUILDING:
 			building = self.generator.get_building_at(x, y)
@@ -1141,6 +1169,8 @@ class Biome:
 		self.name = args[1]
 		
 		self.color = args[2]
+		
+		self.resource_ranges = args[3]
 		
 class DietaryProfile:
 	def __init__(self, *args):

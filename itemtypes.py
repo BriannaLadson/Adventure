@@ -86,6 +86,7 @@ class FruitType(ItemType):
 		base_value = 1,
 		weight = 1,
 		can_forage = True,
+		biomes = []
 	):
 		super().__init__(
 			id = id,
@@ -95,6 +96,8 @@ class FruitType(ItemType):
 			weight = weight,
 			can_forage = can_forage,
 		)
+		
+		self.biomes = biomes
 		
 class OreType(ItemType):
 	def __init__(self, *args):

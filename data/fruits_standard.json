@@ -3,6 +3,177 @@
 		"name": "Apple",
 		"base_value": 2,
 		"weight": 1,
-		"can_forage": true
+		"can_forage": true,
+		"biomes": [
+			"lowlands",
+			"coldlands",
+			"highlands"
+		]
+	},
+	"blackberry": {
+		"name": "Blackberry",
+		"base_value": 2,
+		"weight": 1,
+		"can_forage": true,
+		"biomes": [
+			"lowlands",
+			"wetlands",
+			"coldlands",
+			"highlands"
+		]
+	},
+	"blueberry": {
+		"name": "Blueberry",
+		"base_value": 2,
+		"weight": 1,
+		"can_forage": true,
+		"biomes": [
+			"wetlands",
+			"coldlands",
+			"highlands"
+		]
+	},
+	"cherry": {
+		"name": "Cherry",
+		"base_value": 2,
+		"weight": 1,
+		"can_forage": true,
+		"biomes": [
+			"lowlands",
+			"coldlands",
+			"highlands"
+		]
+	},
+	"grape": {
+		"name": "Grape",
+		"base_value": 2,
+		"weight": 1,
+		"can_forage": true,
+		"biomes": [
+			"lowlands",
+			"drylands",
+			"hotlands"
+		]
+	},
+	"peach": {
+		"name": "Peach",
+		"base_value": 2,
+		"weight": 1,
+		"can_forage": true,
+		"biomes": [
+			"lowlands",
+			"hotlands"
+		]
+	},
+	"pear": {
+		"name": "Pear",
+		"base_value": 2,
+		"weight": 1,
+		"can_forage": true,
+		"biomes": [
+			"lowlands",
+			"coldlands",
+			"highlands"
+		]
+	},
+	"plum": {
+		"name": "Plum",
+		"base_value": 2,
+		"weight": 1,
+		"can_forage": true,
+		"biomes": [
+			"lowlands",
+			"wetlands",
+			"highlands"
+		]
+	},
+	"raspberry": {
+		"name": "Raspberry",
+		"base_value": 2,
+		"weight": 1,
+		"can_forage": true,
+		"biomes": [
+			"lowlands",
+			"coldlands",
+			"highlands"
+		]
+	},
+	"strawberry": {
+		"name": "Strawberry",
+		"base_value": 2,
+		"weight": 1,
+		"can_forage": true,
+		"biomes": [
+			"lowlands",
+			"wetlands",
+			"highlands"
+		]
+	},
+	"lemon": {
+		"name": "Lemon",
+		"base_value": 2,
+		"weight": 1,
+		"can_forage": true,
+		"biomes": [
+			"hotlands"
+		]
+	},
+	"lime": {
+		"name": "Lime",
+		"base_value": 2,
+		"weight": 1,
+		"can_forage": true,
+		"biomes": [
+			"hotlands"
+		]
+	},
+	"orange": {
+		"name": "Orange",
+		"base_value": 3,
+		"weight": 1,
+		"can_forage": true,
+		"biomes": [
+			"hotlands"
+		]
+	},
+	"banana": {
+		"name": "Banana",
+		"base_value": 3,
+		"weight": 1,
+		"can_forage": true,
+		"biomes": [
+			"wetlands",
+			"hotlands"
+		]
+	},
+	"pineapple": {
+		"name": "Pineapple",
+		"base_value": 4,
+		"weight": 3,
+		"can_forage": true,
+		"biomes": [
+			"hotlands"
+		]
+	},
+	"cantaloupe": {
+		"name": "Cantaloupe",
+		"base_value": 4,
+		"weight": 5,
+		"can_forage": true,
+		"biomes": [
+			"drylands",
+			"hotlands"
+		]
+	},
+	"watermelon": {
+		"name": "Watermelon",
+		"base_value": 5,
+		"weight": 10,
+		"can_forage": true,
+		"biomes": [
+			"lowlands",
+			"drylands",
+			"hotlands"
+		]
 	}
 }

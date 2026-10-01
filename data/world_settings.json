@@ -40,31 +40,31 @@
 				"type": "radial",
 				"strength": 0.5
 			},
-			"zoom": 1.0,
+			"zoom": 0.5,
 			"redistribution": 1.0
 		},
 		"moisture": {
 			"seed": 0,
-			"octaves": 10,
-			"persistence": 0.5,
-			"lacunarity": 2.0,
+			"octaves": 6,
+			"persistence": 0.6,
+			"lacunarity": 2.2,
 			"falloff": {
 				"type": "radial",
-				"strength": 0.5
+				"strength": 0.0
 			},
-			"zoom": 1.0,
+			"zoom": 0.35,
 			"redistribution": 1.0
 		},
 		"temperature": {
 			"seed": 0,
-			"octaves": 10,
-			"persistence": 0.5,
-			"lacunarity": 2.0,
+			"octaves": 4,
+			"persistence": 0.45,
+			"lacunarity": 1.8,
 			"falloff": {
 				"type": "radial",
-				"strength": 0.5
+				"strength": 0.0
 			},
-			"zoom": 1.0,
+			"zoom": 0.75,
 			"redistribution": 1.0
 		}
 	},
@@ -75,33 +75,13 @@
 			"color": "#1E3A8A",
 			"rules": {
 				"elevation": [0.0, 0.3]
-			}
-		},
-		{
-			"id": "lowlands",
-			"name": "Lowlands",
-			"color": "#6BAF6B",
-			"rules": {
-				"elevation": [0.3, 0.6],
-				"moisture": [0.3, 0.6]
-			}
-		},
-		{
-			"id": "wetlands",
-			"name": "Wetlands",
-			"color": "#3E7C59",
-			"rules": {
-				"elevation": [0.3, 0.6],
-				"moisture": [0.6, 1.0]
-			}
-		},
-		{
-			"id": "drylands",
-			"name": "Drylands",
-			"color": "#C2B280",
-			"rules": {
-				"elevation": [0.3, 0.6],
-				"moisture": [0.0, 0.3]
+			},
+			"resources": {
+				"fauna": [60, 100],
+				"flora": [10, 40],
+				"mineral": [0, 20],
+				"trees": [0, 0],
+				"water": [100, 100]
 			}
 		},
 		{
@@ -109,8 +89,15 @@
 			"name": "Coldlands",
 			"color": "#E0F7FA",
 			"rules": {
-				"elevation": [0.3, 0.6],
-				"temperature": [0.0, 0.3]
+				"elevation": [0.3, 0.58],
+				"temperature": [0.0, 0.43]
+			},
+			"resources": {
+				"fauna": [20, 60],
+				"flora": [10, 50],
+				"mineral": [30, 70],
+				"trees": [20, 60],
+				"water": [30, 70]
 			}
 		},
 		{
@@ -118,8 +105,66 @@
 			"name": "Hotlands",
 			"color": "#E4A159",
 			"rules": {
-				"elevation": [0.3, 0.6],
-				"temperature": [0.6, 1.0]
+				"elevation": [0.3, 0.58],
+				"temperature": [0.57, 1.0]
+			},
+			"resources": {
+				"fauna": [30, 70],
+				"flora": [30, 80],
+				"mineral": [30, 70],
+				"trees": [20, 70],
+				"water": [20, 60]
+			}
+		},
+		{
+			"id": "wetlands",
+			"name": "Wetlands",
+			"color": "#3E7C59",
+			"rules": {
+				"elevation": [0.3, 0.58],
+				"temperature": [0.43, 0.57],
+				"moisture": [0.57, 1.0]
+			},
+			"resources": {
+				"fauna": [50, 90],
+				"flora": [70, 100],
+				"mineral": [10, 40],
+				"trees": [50, 90],
+				"water": [80, 100]
+			}
+		},
+		{
+			"id": "drylands",
+			"name": "Drylands",
+			"color": "#C2B280",
+			"rules": {
+				"elevation": [0.3, 0.58],
+				"temperature": [0.43, 0.57],
+				"moisture": [0.0, 0.43]
+			},
+			"resources": {
+				"fauna": [10, 50],
+				"flora": [10, 40],
+				"mineral": [40, 80],
+				"trees": [0, 30],
+				"water": [0, 30]
+			}
+		},
+		{
+			"id": "lowlands",
+			"name": "Lowlands",
+			"color": "#6BAF6B",
+			"rules": {
+				"elevation": [0.3, 0.58],
+				"temperature": [0.43, 0.57],
+				"moisture": [0.43, 0.57]
+			},
+			"resources": {
+				"fauna": [40, 80],
+				"flora": [50, 90],
+				"mineral": [20, 60],
+				"trees": [40, 80],
+				"water": [40, 70]
 			}
 		},
 		{
@@ -127,7 +172,14 @@
 			"name": "Highlands",
 			"color": "#8C6F3F",
 			"rules": {
-				"elevation": [0.6, 1.0]
+				"elevation": [0.58, 1.0]
+			},
+			"resources": {
+				"fauna": [20, 60],
+				"flora": [20, 60],
+				"mineral": [60, 100],
+				"trees": [10, 50],
+				"water": [20, 60]
 			}
 		}
 	]

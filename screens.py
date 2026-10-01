@@ -111,6 +111,9 @@ class WorldGenerationScreen(Screen):
 		
 		game.overworld_generator = self.generator
 		
+		game.regions = {}
+		
+		
 		game.location_map = [
 			[None for _ in range(game.world_size)]
 			for _ in range(game.world_size)

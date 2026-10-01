@@ -2,6 +2,10 @@ import entities
 import institutions
 
 def generate_world(game):
+	game.regions.clear()
+	game.civilizations.clear()
+	game.settlements.clear()
+	
 	generate_civilizations(game)
 	generate_capitals(game)
 	generate_settlements(game)

@@ -389,11 +389,30 @@ class Forager(Profession):
 		flora = settlement.resources["flora"]
 		water = settlement.resources["water"]
 		
-		chance = int((flora + water) / 2)
+		biome_id = settlement.region.biome.id
+		
+		fruit_outputs = [
+			fruit_id 
+			for fruit_id, fruit in game.fruit_objs.items()
+			if fruit.can_forage
+			and biome_id in fruit.biomes
+		]
 		
 		for _ in range(foragers):
+			forage_type = random.choice(["fruit", "water"])
+			
+			if forage_type == "water":
+				chance = water
+				forage_item = "water"
+				
+			else:
+				if not fruit_outputs:
+					continue
+					
+				chance = flora
+				forage_item = random.choice(fruit_outputs)
+				
 			if random.randint(1, 100) <= chance:
-				forage_item = random.choice(self.outputs)
 				sub_economy.add_item(forage_item, quantity=1)
 		
 PROFESSIONS = {
