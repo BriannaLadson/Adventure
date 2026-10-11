@@ -1,4 +1,4 @@
-# Adventure v0.16.0
+# Adventure v0.17.0
 
 Adventure is an open-world sandbox RPG simulation built using Python and Tkinter.
 
@@ -7,17 +7,17 @@ Explore a procedurally generated fantasy world, earn a living through profession
 For more information on game systems, modding, and development, see the project [Wiki](https://github.com/BriannaLadson/Adventure/wiki).
 
 ## Current Features
+
 - Procedurally generated worlds, civilizations, settlements, and local maps
-- Overworld regions with biome-specific environmental resources
-- Regional fauna, flora, minerals, trees, and water availability
-- Biome-specific fruit availability and foraging
+- Persistent overworld regions with biome-specific environmental resources
+- Regional fauna, flora, minerals, trees, and water
+- Biome-specific fruit foraging
 - Multiple fruit and wine varieties
-- Automatically generated fruit wines and crafting reactions
+- Automatically generated wine types and crafting reactions
 - Brewing and other resource-based professions
-- Town and wilderness maps that reflect their regional biome
 - Dynamic economy with production chains, supply and demand, and settlement inventories
+- Data-driven crafting reactions and item types
 - Exploration, cartography, and location discovery
-- Character needs with race-specific dietary requirements
 - Character stats with skill XP, leveling, and progression
 - Strength and Speed skills that improve through movement
 - Strength-based maximum encumbrance
@@ -33,28 +33,53 @@ For more information on game systems, modding, and development, see the project 
 - Checking accounts with procedurally generated minimum opening deposits
 - Checking account deposits, withdrawals, balances, and account closure
 - Data-driven architecture designed for expansion and modding
+- Tabbed character creation with Identity, Items, and Start settings
+- Ratio-based character ancestry with support for mixed ancestry
+- Ancestry-based generation of need capacities, decay rates, and dietary compatibility
+- Dietary compatibility checks to ensure generated characters can satisfy their needs
+- Character sheet Identity tab displaying ancestry percentages
+
+## What's New in v0.17.0
+
+- Character creation settings are now organized into tabs.
+- Characters store ancestry as ratios rather than a single race.
+- Player character creation still selects one race, stored as 100% ancestry.
+- Character generation supports mixed ancestry, with probabilistically selected needs and dietary traits.
+- The character sheet now includes an Identity tab displaying ancestry percentages.
+- Screens, reusable widgets, and popups are organized into separate modules.
+
+### Save Compatibility
+
+Start a new save for v0.17.0. Saves from earlier versions are not migrated to the new ancestry and need-definition system.
 
 ## Screenshots
+
 ### Start Screen
+
 <img width="1366" height="768" alt="Screenshot (711)" src="https://github.com/user-attachments/assets/40c47fa3-1d76-41cd-8c5c-3847fb5411c2" />
 
 ### Character Creation
+
 <img width="1366" height="768" alt="Screenshot (713)" src="https://github.com/user-attachments/assets/e753174e-20fc-4849-933f-6156b434bed9" />
 
-
 ### World Generation
+
 <img width="1366" height="768" alt="Screenshot (689)" src="https://github.com/user-attachments/assets/1169fd7e-50c6-424e-ae52-157c41584ab7" />
 
 ### Location Discovery
+
 <img width="1366" height="768" alt="Screenshot (690)" src="https://github.com/user-attachments/assets/7e314f0c-3440-407d-8644-1ee6d94698ab" />
 
 ### Location Buildings
-<img width="1366" height="768" alt="Screenshot (691)" src="https://github.com/user-attachments/assets/148166e2-c76e-4631-942c-9dada324dd4d" />
+
+<img width="1366" height="768" alt="Screenshot (691)" src="https://github.com/user-attachments/assets/148166e2-c76e-4631-942d-9dada324dd4d" />
 
 ### Economy
-<img width="1366" height="768" alt="Screenshot (714)" src="https://github.com/user-attachments/assets/4c972c49-b8ca-4b93-9816-2dd736781c6a" />
+
+<img width="1366" height="768" alt="Screenshot (714)" src="https://github.com/user-attachments/assets/4c972c49-b8ca-4b93-9816-05a27b68ebf6" />
 
 ### Character Sheet
+
 <img width="1366" height="768" alt="Screenshot (715)" src="https://github.com/user-attachments/assets/03423746-b47a-4cc5-8893-513d8012aa05" />
 
 <img width="1366" height="768" alt="Screenshot (716)" src="https://github.com/user-attachments/assets/3395247a-e779-4051-a745-dffce677f822" />
@@ -91,18 +116,18 @@ python main.py
 
 Current dependencies include:
 
-* terraforge-core
-* cqcalendar
-* dyecon
-* numpy
-* pillow
-* noise
+- terraforge-core
+- cqcalendar
+- dyecon
+- numpy
+- pillow
+- noise
 
 ## Libraries
 
-* [CQCalendar](https://github.com/BriannaLadson/CQCalendar): A customizable, tick-based time and calendar system for Python games and simulations.
-* [TerraForge](https://github.com/BriannaLadson/TerraForge): TerraForge is a versatile Python toolset for procedural map generation.
-* [DyEcon](https://github.com/BriannaLadson/DyEcon): A lightweight dynamic economy simulation library for Python games and simulations.
+- [CQCalendar](https://github.com/BriannaLadson/CQCalendar): A customizable, tick-based time and calendar system for Python games and simulations.
+- [TerraForge](https://github.com/BriannaLadson/TerraForge): A versatile Python toolset for procedural map generation.
+- [DyEcon](https://github.com/BriannaLadson/DyEcon): A lightweight dynamic economy simulation library for Python games and simulations.
 
 ## License
 

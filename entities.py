@@ -563,13 +563,37 @@ class Creature(Entity):
 		self.memory = Memory()
 		
 class Character(Creature):
-	def __init__(self, race, skills):
+	def __init__(self, ancestry, race_objs, skills):
 		super().__init__()
 		
-		self.race = race
+		#Ancestry
+		self.ancestry = {
+			race_id: ratio
+			for race_id, ratio in ancestry.items()
+			if ratio != 0
+		}
+		
+		if not self.ancestry:
+			raise ValueError("A character must have ancestry.")
+			
+		if any(
+			not isinstance(ratio, (int, float)) or not 0 < ratio <= 1
+			for ratio in self.ancestry.values()
+		):
+			raise ValueError("Ancestry ratios must be greater than 0 and at most 1.")
+			
+		if abs(sum(self.ancestry.values()) - 1.0) > 0.000001:
+			raise ValueError("Ancestry ratios must total 1.")
+			
+		for race_id in self.ancestry:
+			if race_id not in race_objs:
+				raise ValueError(f"Unknown ancestry: {race_id}")
+		
+		self.generate_need_definitions(race_objs)
 		
 		self.needs = {
-			need_id: need_data["max"] for need_id, need_data in race.needs.items()
+			need_id: need_data["max"] 
+			for need_id, need_data in self.need_definitions.items()
 		}
 		
 		self.need_warnings = {
@@ -592,19 +616,14 @@ class Character(Creature):
 				"max_xp": 200
 			}
 		
-		self.dietary_profile = race.dietary_profile.copy()
+		self.generate_dietary_profile(race_objs)
 		
 		self.cur_encumbrance = 0
 		self.max_encumbrance = 100
 		
 	def update_needs(self):
-		for need_id, need_data in self.race.needs.items():
-			decay = need_data["decay"]
-			
-			self.needs[need_id] -= decay
-			
-			if self.needs[need_id] < 0:
-				self.needs[need_id] = 0
+		for need_id, need_data in self.need_definitions.items():
+			self.needs[need_id] = max(0, self.needs[need_id] - need_data["decay"])
 				
 	def consume_item(self, item_id, game):
 		need_values = self.get_item_need_values(item_id, game)
@@ -619,7 +638,7 @@ class Character(Creature):
 			if need_id not in self.needs:
 				continue
 				
-			max_value = self.race.needs[need_id]["max"]
+			max_value = self.need_definitions[need_id]["max"]
 			self.needs[need_id] = min(self.needs[need_id] + amount, max_value)
 			
 		return True
@@ -715,6 +734,110 @@ class Character(Creature):
 				
 		return low_needs
 		
+	def generate_need_definitions(self, race_objs):
+		race_ids = list(self.ancestry)
+		weights = [self.ancestry[race_id] for race_id in race_ids]
+		
+		need_ids = sorted({
+			need_id
+			for race_id in race_ids
+			for need_id in race_objs[race_id].needs
+		})
+		
+		self.need_definitions = {}
+		
+		for need_id in need_ids:
+			race_id = random.choices(
+				race_ids,
+				weights=weights,
+				k=1,
+			)[0]
+			
+			need_data = race_objs[race_id].needs.get(need_id)
+			
+			if need_data is not None:
+				self.need_definitions[need_id] = need_data.copy()
+		
+	def generate_dietary_profile(self, race_objs):
+		item_ids = sorted({
+			item_id
+			for race_id in self.ancestry
+			for item_id in race_objs[race_id].dietary_profile.items
+		})
+		
+		inherited_items = {}
+		
+		for item_id in item_ids:
+			supporting_races = [
+				race_id
+				for race_id in self.ancestry
+				if item_id in race_objs[race_id].dietary_profile.items
+			]
+			
+			weights = [
+				self.ancestry[race_id]
+				for race_id in supporting_races
+			]
+			
+			inheritance_chance = min(1.0, sum(weights))
+			
+			if random.random() >= inheritance_chance:
+				continue
+				
+			race_id = random.choices(
+				supporting_races,
+				weights=weights,
+				k=1
+			)[0]
+			
+			inherited_items[item_id] = (
+				race_objs[race_id].dietary_profile.items[item_id].copy()
+			)
+			
+		self.dietary_profile = DietaryProfile("inherited", inherited_items)
+		
+		self.ensure_diet_compatibility(race_objs)
+		
+	def ensure_diet_compatibility(self, race_objs):
+		for need_id in self.need_definitions:
+			supported = any(
+				values.get(need_id, 0) > 0
+				for values in self.dietary_profile.items.values()
+			)
+			
+			if supported:
+				continue
+				
+			candidates = []
+			weights = []
+			
+			for race_id, ratio in self.ancestry.items():
+				profile = race_objs[race_id].dietary_profile
+				
+				compatible_items = [
+					item_id
+					for item_id, values in profile.items.items()
+					if values.get(need_id, 0) > 0
+				]
+				
+				if compatible_items:
+					candidates.append((race_id, compatible_items))
+					weights.append(ratio)
+					
+			if not candidates:
+				raise ValueError(f"No ancestry dietary entry can satisfy {need_id}.")
+			race_id, compatible_items = random.choices(
+				candidates,
+				weights = weights,
+				k=1,
+			)[0]
+			
+			item_id = random.choice(compatible_items)
+			source_values = race_objs[race_id].dietary_profile.items[item_id]
+			
+			inherited_values = self.dietary_profile.items.setdefault(item_id, {})
+			inherited_values[need_id] = source_values[need_id]
+		
 	def add_carried_object(self, item_id, game, quantity=1):
 		if item_id in game.coin_objs:
 			success = self.wallet.add_coins(item_id, quantity)
@@ -804,8 +927,8 @@ class Character(Creature):
 		return self.dietary_profile.get_need_values(item_type)
 		
 class Player(Character):
-	def __init__(self, race, skill_objs):
-		super().__init__(race, skill_objs)
+	def __init__(self, ancestry, race_objs, skill_objs):
+		super().__init__(ancestry, race_objs, skill_objs)
 		
 		self.char = '@'
 

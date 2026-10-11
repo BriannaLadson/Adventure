@@ -1,7 +1,8 @@
 from tkinter import *
 from tkinter import ttk
 
-from screenwidgets import Popup, CustomNotebook, Tab
+from screenwidgets import CustomNotebook, Tab
+from popups import Popup
 
 #BankPopup
 class BankPopup(Popup):
