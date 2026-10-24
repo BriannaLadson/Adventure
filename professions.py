@@ -414,7 +414,15 @@ class Forager(Profession):
 				
 			if random.randint(1, 100) <= chance:
 				sub_economy.add_item(forage_item, quantity=1)
+	
+class Blacksmith(Profession):
+	def __init__(self):
+		super().__init__()
 		
+		self.id = "blacksmith"
+		
+		self.name = "Blacksmith"
+	
 PROFESSIONS = {
 	"hunter": Hunter(),
 	"water_collector": WaterCollector(),
@@ -430,4 +438,5 @@ PROFESSIONS = {
 	"smelter": Smelter(),
 	"coinsmith": Coinsmith(),
 	"brewer": Brewer(),
+	"blacksmith": Blacksmith(),
 }

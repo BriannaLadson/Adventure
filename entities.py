@@ -45,6 +45,14 @@ class Game:
 		
 		self.fruit_objs = {}
 		
+		self.metals = {}
+		
+		self.bar_objs = {}
+		
+		self.coin_objs = {}
+		
+		self.pickaxe_objs = {}
+		
 		self.profession_objs = professions.PROFESSIONS
 		
 		self.item_type_objs = itemtypes.ITEM_TYPES.copy()
@@ -55,6 +63,7 @@ class Game:
 		
 		self.skills = {
 			"brewing": "Brewing",
+			"mining": "Mining",
 			"strength": "Strength",
 			"speed": "Speed",
 		}
@@ -468,6 +477,8 @@ class Game:
 		return None
 	
 	def resolve_data_references(self):
+		self.generate_metal_items()
+		
 		self.resolve_race_references()
 		
 		self.link_forageable_items_to_forager()
@@ -517,6 +528,21 @@ class Game:
 			
 			self.wine_reaction_objs[reaction.id] = reaction
 			self.crafting_reaction_objs[reaction.id] = reaction
+			
+	def generate_metal_items(self):
+		for metal_id, metal in self.metals.items():
+			bar = itemtypes.BarType(metal_id, metal)
+			coin = itemtypes.CoinType(metal_id, metal)
+			pickaxe = itemtypes.Pickaxe(metal_id, metal)
+			
+			self.bar_objs[bar.id] = bar
+			self.coin_objs[coin.id] = coin
+			self.pickaxe_objs[pickaxe.id] = pickaxe
+			
+			for item in (bar, coin, pickaxe):
+				self.item_type_objs[item.id] = item
+				
+		self.profession_objs["blacksmith"].outputs = list(self.pickaxe_objs)
 			
 	def assign_crafting_reactions(self):
 		self.assign_brewer_reactions()
@@ -620,6 +646,10 @@ class Character(Creature):
 		
 		self.cur_encumbrance = 0
 		self.max_encumbrance = 100
+		
+		self.first_name = ""
+		self.middle_name = ""
+		self.last_name = ""
 		
 	def update_needs(self):
 		for need_id, need_data in self.need_definitions.items():

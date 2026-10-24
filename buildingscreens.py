@@ -1,5 +1,6 @@
 from tkinter import *
 from tkinter import ttk
+import random
 
 from screenwidgets import CustomNotebook, Tab
 from popups import Popup
@@ -503,8 +504,138 @@ class ExchangeCurrencyPopup(Popup):
 			self.bank_notebook.update_tabs()
 			self.destroy()
 			
+#MinePopup
+class MinePopup(Popup):
+	def __init__(self, root, building):
+		super().__init__(root)
+		
+		self.play_screen = root.play_screen
+		self.game = self.play_screen.game
+		self.player = self.game.player
+		self.settlement = building.settlement
+		
+		self.play_screen.can_process_input = False
+		
+		ttk.Label(self, text=building.get_name(), anchor="center").pack(fill=X)
+		
+		if self.has_pickaxe():
+			ttk.Label(
+				self,
+				text="How many hours would you like to mine?"
+			).pack(fill=X)
 			
+			self.hours_var = StringVar(value="1")
+			
+			validate_hours = (
+				self.register(self.validate_hours),
+				"%P",
+			)
+			
+			ttk.Spinbox(
+				self,
+				from_=1,
+				to=24,
+				textvariable=self.hours_var,
+				validate="key",
+				validatecommand=validate_hours,
+			).pack(fill=X)
+			
+			ttk.Button(
+				self,
+				text="Mine",
+				command=self.mine
+			).pack(fill=X)
+			
+		else:
+			ttk.Label(
+				self,
+				text="You need a pickaxe to mine."
+			).pack(fill=X)
+			
+		ttk.Button(
+			self,
+			text="Leave",
+			command=self.close,
+		).pack(fill=X)
+		
+		self.center()
+		
+	def validate_hours(self, value):
+		return value == "" or (
+			value.isascii()
+			and value.isdigit()
+			and 1 <= int(value) <= 24
+		)
+		
+	def has_pickaxe(self):
+		return any(
+			quantity > 0
+			and self.game.item_type_objs[item_id].type_id == "pickaxe"
+			for item_id, quantity in self.player.inventory.get_items()
+		)
+		
+	def mine(self):
+		if not self.has_pickaxe():
+			return
 
+		value = self.hours_var.get()
+
+		if not value or not self.validate_hours(value):
+			return
+
+		hours = int(value)
+		ore_ids = list(self.game.ore_objs)
+
+		if not ore_ids:
+			return
+
+		for _ in range(hours):
+			start_hour = (
+				self.game.calendar.hour,
+				self.game.calendar.is_pm,
+			)
+
+			while (
+				self.game.calendar.hour,
+				self.game.calendar.is_pm,
+			) == start_hour:
+				dead_entities = self.game.inc_time(ticks=1)
+
+				if self.player in dead_entities:
+					self.destroy()
+					self.play_screen.update_screen()
+					self.play_screen.handle_player_death()
+					return
+
+			mineral = self.settlement.resources["mineral"]
+			mining_level = self.player.get_skill_lvl("mining")
+
+			mining_chance = min(
+				100,
+				(mineral + mining_level) / 2,
+			)
+
+			if random.uniform(0, 100) < mining_chance:
+				ore_id = random.choice(ore_ids)
+
+				self.player.add_carried_object(
+					ore_id,
+					self.game,
+					quantity=1,
+				)
+
+			self.player.gain_skill_xp("mining")
+
+			if self.player.get_low_needs():
+				break
+
+		self.play_screen.update_screen()
+		
+	def close(self):
+		self.play_screen.can_process_input = True
+		
+		self.destroy()
+		
 #TradePopup
 class TradePopup(Popup):
 	def __init__(self, root, building):
@@ -536,6 +667,27 @@ class TradePopup(Popup):
 		self.player_currency_var = StringVar(value=f"You ({currency_name}: {player_currency_quantity})")
 		ttk.Label(self, textvariable=self.player_currency_var, anchor="center").pack(fill=X)
 		
+		filter_fr = ttk.Frame(self)
+		filter_fr.pack(fill=X)
+		
+		categories = {
+			category
+			for item in game.item_type_objs.values()
+			for category in item.categories
+		}
+		
+		self.filter_var = StringVar(value="All")
+		
+		self.filter_cbx = ttk.Combobox(
+			filter_fr,
+			textvariable=self.filter_var,
+			values=["All"] + sorted(categories),
+			state="readonly",
+		)
+		self.filter_cbx.pack(fill=X)
+		
+		self.filter_cbx.bind("<<ComboboxSelected>>", self.filter_items)
+		
 		self.trade_nb = TradeNotebook(self, root, building)
 		self.trade_nb.pack(fill=BOTH, expand=1)
 		
@@ -558,6 +710,14 @@ class TradePopup(Popup):
 		
 		self.settlement_currency_var.set(f"{self.building.get_name()} ({currency_name}: {settlement_currency_quantity})")
 		self.player_currency_var.set(f"You ({currency_name}: {player_currency_quantity})")
+		
+	def filter_items(self, event=None):
+		self.trade_nb.update_tabs()
+		
+	def matches_filter(self, item):
+		category = self.filter_var.get()
+		
+		return category == "All" or category in item.categories
 		
 class TradeNotebook(CustomNotebook):
 	def __init__(self, parent, root, building):
@@ -590,8 +750,16 @@ class BuyItemTab(Tab):
 		self.player = self.game.player
 		self.settlement = parent.building.settlement
 		
-		self.grid = TradeGrid(self, self.settlement.sub_economy, self.game)
-		self.grid.pack(fill=BOTH, expand=1)
+		list_fr = ttk.Frame(self)
+		list_fr.pack(fill=BOTH, expand=1)
+		
+		self.grid = TradeGrid(list_fr, self.settlement.sub_economy, self.game)
+		self.grid.pack(fill=BOTH, expand=1, side=LEFT)
+		
+		sb = ttk.Scrollbar(list_fr, orient=VERTICAL, command=self.grid.yview)
+		sb.pack(side=RIGHT, fill=Y)
+		
+		self.grid.configure(yscrollcommand=sb.set)
 		
 		ttk.Button(self, text="Buy Item", command=self.buy_item).pack(fill=X)
 		
@@ -618,14 +786,26 @@ class SellItemTab(Tab):
 		self.game = self.root.play_screen.game
 		self.player = self.game.player
 		self.settlement = parent.building.settlement
+		
+		list_fr = ttk.Frame(self)
+		list_fr.pack(fill=BOTH, expand=1)
 
 		self.grid = PlayerInventoryGrid(
-			self,
+			list_fr,
 			self.player,
 			self.game,
 			self.settlement,
 		)
-		self.grid.pack(fill=BOTH, expand=1)
+		self.grid.pack(fill=BOTH, expand=1, side=LEFT)
+
+		sb = ttk.Scrollbar(
+			list_fr,
+			orient=VERTICAL,
+			command=self.grid.yview
+		)
+		sb.pack(side=RIGHT, fill=Y)
+		
+		self.grid.configure(yscrollcommand=sb.set)
 
 		ttk.Button(
 			self,
@@ -653,8 +833,6 @@ class SellItemTab(Tab):
 		
 class TradeGrid(ttk.Treeview):
 	def __init__(self, parent, sub_economy, game):
-		super().__init__(parent)
-		
 		columns = ("item", "quantity", "price", "creator")
 		
 		super().__init__(parent, columns=columns, show="headings")
@@ -690,6 +868,10 @@ class TradeGrid(ttk.Treeview):
 				continue
 
 			item_type = self.game.item_type_objs[item_type_id]
+			
+			if not self.winfo_toplevel().matches_filter(item_type):
+				continue
+			
 			price = self.sub_economy.get_value(item_type_id)
 
 			self.insert(
@@ -752,6 +934,10 @@ class PlayerInventoryGrid(ttk.Treeview):
 				continue
 
 			item_type = self.game.item_type_objs[item_type_id]
+			
+			if not self.winfo_toplevel().matches_filter(item_type):
+				continue
+			
 			price = self.settlement.sub_economy.get_value(item_type_id)
 
 			self.insert(

@@ -155,6 +155,9 @@ def load_fruits(game, data):
 		
 		game.fruit_objs[id] = fruit_obj
 		game.item_type_objs[id] = fruit_obj
+		
+def load_metals(game, data):
+	game.metals.update(data)
 	
 def load_name_systems(game, data):
 	name_system_objs = {}
@@ -238,31 +241,12 @@ def load_races(game, data):
 		
 	game.race_objs = race_objs
 	
-def load_skills(game, data):
-	skill_objs = {}
-	
-	for skill in data:
-		id = skill
-		
-		skill_data = data[skill]
-		
-		skill_obj = entities.Skill(
-			id,
-			skill_data["name"],
-		)
-		
-		skill_objs[id] = skill_obj
-	
-	game.skill_objs = skill_objs
-	
 PREFIX_LOADERS = {
-	"bars_": load_bars,
-	"coins_": load_coins,
 	"dietaryprofiles_": load_dietary_profiles,
 	"fruits_": load_fruits,
+	"metals_": load_metals,
 	"namesystems_": load_name_systems,
 	"ores_": load_ores,
 	"professions_": load_professions,
 	"races_": load_races,
-	"skills_": load_skills,
 }

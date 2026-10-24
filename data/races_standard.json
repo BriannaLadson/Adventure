@@ -29,6 +29,11 @@
 				"min_quantity": 1,
 				"max_quantity": 1,
 				"priority": 100
+			},
+			"mine_building": {
+				"min_quantity": 1,
+				"max_quantity": 1,
+				"priority": 100
 			}
 		},
 		"settlement_buildings": {
@@ -38,6 +43,11 @@
 				"priority": 100
 			},
 			"bank_building": {
+				"min_quantity": 1,
+				"max_quantity": 1,
+				"priority": 100
+			},
+			"mine_building": {
 				"min_quantity": 1,
 				"max_quantity": 1,
 				"priority": 100
@@ -57,7 +67,8 @@
 			"coinsmith": [0, 100],
 			"water_collector":[0, 100],
 			"forager": [0, 100],
-			"brewer": [0, 30]
+			"brewer": [0, 30],
+			"blacksmith": [0, 10]
 		},
 		"currency": "gold_coin",
 		"settlement_currency": [0, 1000],
@@ -103,6 +114,11 @@
 				"min_quantity": 1,
 				"max_quantity": 1,
 				"priority": 100
+			},
+			"mine_building": {
+				"min_quantity": 1,
+				"max_quantity": 1,
+				"priority": 100
 			}
 		},
 		"settlement_buildings": {
@@ -112,6 +128,11 @@
 				"priority": 100
 			},
 			"bank_building": {
+				"min_quantity": 1,
+				"max_quantity": 1,
+				"priority": 100
+			},
+			"mine_building": {
 				"min_quantity": 1,
 				"max_quantity": 1,
 				"priority": 100
@@ -131,7 +152,8 @@
 			"coinsmith": [50, 100],
 			"water_collector":[0, 50],
 			"forager": [0, 50],
-			"brewer": [20, 60]
+			"brewer": [20, 60],
+			"blacksmith": [5, 25]
 		},
 		"currency": "platinum_coin",
 		"settlement_currency": [0, 1000],

@@ -40,7 +40,22 @@ class MarketBuilding(BuildingType):
 		
 		self.popup_type = "trade"
 		
+class MineBuilding(BuildingType):
+	def __init__(self):
+		super().__init__()
+		
+		self.id = "mine_building"
+		
+		self.name = "Mine"
+		
+		self.color = "#625B53"
+		
+		self.size = (3, 6)
+		
+		self.popup_type = "mine"
+		
 BUILDING_TYPES = {
 	"bank_building": BankBuilding(),
 	"market_building": MarketBuilding(),
+	"mine_building": MineBuilding(),
 }

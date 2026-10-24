@@ -249,6 +249,7 @@ class PlayScreen(Screen):
 		self.building_popup_types = {
 			"trade": buildingscreens.TradePopup,
 			"bank": buildingscreens.BankPopup,
+			"mine": buildingscreens.MinePopup,
 		}
 		
 		#Info Frame

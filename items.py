@@ -1,7 +1,7 @@
 import uuid
 
 class Item:
-	def __init__(self):
+	def __init__(self, categories=None):
 		self.creator = None
 		
 		self.value = 1
@@ -13,10 +13,14 @@ class Item:
 		self.description = ""
 		
 		self.weight = 1
+		
+		self.categories = []
 
 class Map(Item):
 	def __init__(self, location, gx, gy, creator=None, cartography_lvl=1, value=1):
-		super().__init__()
+		super().__init__(
+			categories = ["Map"]
+		)
 		
 		self.id = f"map_{uuid.uuid4().hex[:8]}"
 		

@@ -46,6 +46,7 @@ class WineType(ItemType):
 			type_id = "wine",
 			base_value = fruit.base_value * self.VALUE_MULTIPLIER,
 			weight = 2,
+			categories = ["Drink", "Wine"]
 		)
 		
 		self.fruit = fruit.id
@@ -53,30 +54,40 @@ class WineType(ItemType):
 
 		
 class BarType(ItemType):
-	def __init__(self, *args):
-		super().__init__()
+	def __init__(self, metal_id, metal):
+		super().__init__(
+			id = f"{metal_id}_bar",
+			name = f"{metal['name']} Bar",
+			type_id = "bar",
+			base_value = metal["base_value"],
+			weight = 1,
+			categories = ["Material"],
+		)
 		
-		self.id = args[0]
+		self.material = metal_id
 		
-		self.name = args[1]
-		
-		self.reagents = args[2]
-		
-		self.base_value = args[3]
+		self.reagents = {
+			"coal": 1,
+			f"{metal_id}_ore": 1,
+		}
 		
 class CoinType(ItemType):
-	def __init__(self, *args):
-		super().__init__()
+	def __init__(self, metal_id, metal):
+		super().__init__(
+			id = f"{metal_id}_coin",
+			name = f"{metal['name']} Coin",
+			type_id = "coin",
+			base_value = 1,
+			weight = 0.1,
+			categories = ["Coin"]
+		)
 		
-		self.id = args[0]
+		self.material = metal_id
 		
-		self.name = args[1]
-		
-		self.reagents = args[2]
-		
-		self.base_value = args[3]
-		
-		self.weight = 0.1
+		self.reagents = {
+			f"{metal_id}_bar": 1,
+			"coal": 1,
+		}
 		
 class FruitType(ItemType):
 	def __init__(
@@ -95,13 +106,16 @@ class FruitType(ItemType):
 			base_value = base_value,
 			weight = weight,
 			can_forage = can_forage,
+			categories = ["Food", "Fruit"]
 		)
 		
 		self.biomes = biomes
 		
 class OreType(ItemType):
 	def __init__(self, *args):
-		super().__init__()
+		super().__init__(
+			categories = ["Material", "Ore"]
+		)
 		
 		self.id = args[0]
 		
@@ -111,7 +125,9 @@ class OreType(ItemType):
 		
 class AnimalCorpse(ItemType):
 	def __init__(self):
-		super().__init__()
+		super().__init__(
+			categories = ["Animal Product"]
+		)
 		
 		self.id = "animal_corpse"
 		
@@ -123,7 +139,9 @@ class AnimalCorpse(ItemType):
 		
 class AnimalHide(ItemType):
 	def __init__(self):
-		super().__init__()
+		super().__init__(
+			categories = ["Animal Product"]
+		)
 		
 		self.id = "animal_hide"
 		
@@ -139,7 +157,9 @@ class AnimalHide(ItemType):
 		
 class AnimalLeather(ItemType):
 	def __init__(self):
-		super().__init__()
+		super().__init__(
+			categories = ["Animal Product"]
+		)
 		
 		self.id = "animal_leather"
 		
@@ -155,7 +175,9 @@ class AnimalLeather(ItemType):
 		
 class Coal(ItemType):
 	def __init__(self):
-		super().__init__()
+		super().__init__(
+			categories = ["Material", "Fuel"]
+		)
 		
 		self.id = "coal"
 		
@@ -172,7 +194,9 @@ class Coal(ItemType):
 		
 class Ink(ItemType):
 	def __init__(self):
-		super().__init__()
+		super().__init__(
+			categories = ["Material"]
+		)
 		
 		self.id = "ink"
 		
@@ -186,7 +210,9 @@ class Ink(ItemType):
 		
 class AnimalMeat(ItemType):
 	def __init__(self):
-		super().__init__()
+		super().__init__(
+			categories = ["Food", "Animal Product", "Meat"]
+		)
 		
 		self.id = "animal_meat"
 		
@@ -203,7 +229,9 @@ class AnimalMeat(ItemType):
 		
 class Parchment(ItemType):
 	def __init__(self):
-		super().__init__()
+		super().__init__(
+			categories = ["Material"]
+		)
 		
 		self.id = "parchment"
 		
@@ -213,7 +241,9 @@ class Parchment(ItemType):
 		
 class Water(ItemType):
 	def __init__(self):
-		super().__init__()
+		super().__init__(
+			categories = ["Drink"]
+		)
 		
 		self.id = "water"
 		
@@ -228,7 +258,9 @@ class Water(ItemType):
 		
 class Wine(ItemType):
 	def __init__(self):
-		super().__init__()
+		super().__init__(
+			categories = ["Drink"]
+		)
 		
 		self.id = "wine"
 		
@@ -249,13 +281,33 @@ class Wine(ItemType):
 		
 class Wood(ItemType):
 	def __init__(self):
-		super().__init__()
+		super().__init__(
+			categories = ["Material"]
+		)
 		
 		self.id = "wood"
 		
 		self.name = "Wood"
 		
 		self.weight = 5
+		
+class Pickaxe(ItemType):
+	def __init__(self, metal_id, metal):
+		super().__init__(
+			id = f"{metal_id}_pickaxe",
+			name = f"{metal['name']} Pickaxe",
+			type_id = "pickaxe",
+			base_value = metal["base_value"] * 2,
+			weight=5,
+			categories = ["Tool"],
+		)
+		
+		self.material = metal_id
+		self.reagents = {
+			f"{metal_id}_bar": 1,
+			"coal": 1,
+			"wood": 1,
+		}
 		
 ITEM_TYPES = {
 	"animal_corpse": AnimalCorpse(),

@@ -1,4 +1,4 @@
-# Adventure v0.17.0
+# Adventure v0.18.0
 
 Adventure is an open-world sandbox RPG simulation built using Python and Tkinter.
 
@@ -39,18 +39,20 @@ For more information on game systems, modding, and development, see the project 
 - Dietary compatibility checks to ensure generated characters can satisfy their needs
 - Character sheet Identity tab displaying ancestry percentages
 
-## What's New in v0.17.0
+## What's New in v0.18.0
 
-- Character creation settings are now organized into tabs.
-- Characters store ancestry as ratios rather than a single race.
-- Player character creation still selects one race, stored as 100% ancestry.
-- Character generation supports mixed ancestry, with probabilistically selected needs and dietary traits.
-- The character sheet now includes an Identity tab displaying ancestry percentages.
-- Screens, reusable widgets, and popups are organized into separate modules.
+- Added mine buildings where players with a pickaxe can choose to mine for 1–24 hours.
+- Mining advances game time and places collected ore directly into the player's inventory.
+- Mining success chance averages regional mineral abundance and the player's Mining skill.
+- Mining grants skill XP, processes character needs, and stops when needs become low.
+- Added metal-specific pickaxes produced by blacksmiths.
+- Added simplified metal definitions in `metals_standard.json`, containing each metal's name and base value.
+- Bars, coins, and pickaxes are now generated from metal definitions rather than separate bar and coin JSON files.
+- Added item categories, a market category filter, and scrollbars for Buy/Sell lists.
 
 ### Save Compatibility
 
-Start a new save for v0.17.0. Saves from earlier versions are not migrated to the new ancestry and need-definition system.
+Start a new save for v0.18.0 to include mine buildings, blacksmiths, and generated metal items. Existing saves are not migrated to the new systems.
 
 ## Screenshots
 
