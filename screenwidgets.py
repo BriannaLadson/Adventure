@@ -1,5 +1,6 @@
 from tkinter import *
 from tkinter import ttk
+from tktooltip import ToolTip
 
 import helpfunctions as helpf
 
@@ -323,49 +324,201 @@ class CharacterSheetIdentityTab(Tab):
 class CraftingTab(Tab):
 	def __init__(self, parent, game):
 		super().__init__(parent)
-		
+
+		self.notebook = parent
 		self.game = game
 		self.player = game.player
-		
-		self.crafting_professions = {
-			profession.name: profession for profession in game.profession_objs.values() if profession.can_craft
+
+		self.skill_options = {"All": None}
+
+		skill_ids = {
+			reaction.skill
+			for reaction in game.crafting_reaction_objs.values()
+			if reaction.skill is not None
 		}
+
+		for skill_id in sorted(skill_ids):
+			self.skill_options[game.skills[skill_id]] = skill_id
+
+		self.skill_var = StringVar(value="All")
+
+		ttk.Label(self, text="Skill").pack(fill=X)
+
+		self.skill_cbx = ttk.Combobox(
+			self,
+			textvariable=self.skill_var,
+			values=list(self.skill_options),
+			state="readonly",
+		)
+		self.skill_cbx.pack(fill=X)
+
+		self.skill_cbx.bind(
+			"<<ComboboxSelected>>",
+			self.update_recipes,
+		)
 		
-		self.profession_var = StringVar()
-		
-		self.crafting_categories_cbx = ttk.Combobox(self, textvariable=self.profession_var, values=list(self.crafting_professions.keys()), state="readonly")
-		self.crafting_categories_cbx.pack()
-		
-		self.crafting_categories_cbx.bind("<<ComboboxSelected>>", self.update_recipes)
-		
+		self.map_btn = ttk.Button(
+			self,
+			text="Draw Map",
+			command=self.open_map_crafting,
+		)
+		self.map_btn.pack(fill=X, padx=5, pady=2)
+
 		self.scrollable_fr = ScrollableFrame(self)
-		self.scrollable_fr.pack(fill=BOTH, expand=1)
+		self.scrollable_fr.pack(fill=BOTH, expand=True)
 		
-		if self.crafting_professions:
-			first_profession = list(self.crafting_professions.keys())[0]
-			
-			self.profession_var.set(first_profession)
-			
-			self.update_recipes()
-	
+		self.recipe_buttons = {}
+		self.recipe_tooltips = {}
+
+		self.update_recipes()
+		
+		self.bind("<Visibility>", self.update_recipes)
+
+	def get_quantity(self, item_id):
+		if item_id in self.game.coin_objs:
+			return self.player.wallet.get_quantity(item_id)
+
+		return self.player.inventory.get_quantity(item_id)
+
+	def can_craft(self, reaction):
+		if reaction.skill is not None:
+			if reaction.skill not in self.player.skills:
+				return False
+
+		return all(
+			self.get_quantity(item_id) >= quantity
+			for item_id, quantity in reaction.reagents.items()
+		)
+
 	def update_recipes(self, event=None):
-		scr_fr = self.scrollable_fr.scrolling_frame
-		helpf.destroy_children_widgets(scr_fr)
-		
-		profession_name = self.profession_var.get()
-		profession = self.crafting_professions.get(profession_name)
-		
-		if profession is None:
-			return
-			
-		for item_id in profession.outputs:
-			item = self.game.item_type_objs[item_id]
-			
-			btn = ttk.Button(
-				scr_fr,
-				text=item.name,
+		frame = self.scrollable_fr.scrolling_frame
+		skill_id = self.skill_options[self.skill_var.get()]
+
+		for button in self.recipe_buttons.values():
+			button.pack_forget()
+
+		reactions = sorted(
+			self.game.crafting_reaction_objs.values(),
+			key=lambda reaction: reaction.name,
+		)
+
+		for reaction in reactions:
+			if skill_id is not None and reaction.skill != skill_id:
+				continue
+
+			if reaction.id not in self.recipe_buttons:
+				button = ttk.Button(
+					frame,
+					text=reaction.name,
+					command=lambda reaction_id=reaction.id: self.craft(
+						reaction_id
+					),
+				)
+
+				tooltip = ToolTip(
+					button,
+					msg=lambda reaction_id=reaction.id: (
+						self.get_recipe_tooltip(reaction_id)
+					),
+					delay=0.4,
+					follow=False,
+					refresh=1.0,
+					justify=LEFT,
+					width=350,
+				)
+
+				self.recipe_buttons[reaction.id] = button
+				self.recipe_tooltips[reaction.id] = tooltip
+
+			button = self.recipe_buttons[reaction.id]
+
+			button.config(
+				state=NORMAL if self.can_craft(reaction) else DISABLED
 			)
-			btn.pack(fill=X)
+			button.pack(fill=X, padx=5, pady=2)
+
+	def get_recipe_tooltip(self, reaction_id):
+		reaction = self.game.crafting_reaction_objs[reaction_id]
+
+		lines = [reaction.name]
+
+		if reaction.skill is not None:
+			skill_name = self.game.skills[reaction.skill]
+			lines.append(f"Skill: {skill_name}")
+
+		lines.extend(["", "Requires:"])
+
+		for item_id, quantity in reaction.reagents.items():
+			item = self.game.item_type_objs[item_id]
+			available = self.get_quantity(item_id)
+
+			lines.append(
+				f"{item.name}: {available} / {quantity}"
+			)
+
+		lines.extend(["", "Produces:"])
+
+		for item_id, quantity in reaction.products.items():
+			item = self.game.item_type_objs[item_id]
+			lines.append(f"{item.name} x{quantity}")
+
+		lines.extend([
+			"",
+			f"Time: {reaction.ticks} tick(s)",
+		])
+
+		return "\n".join(lines)
+
+	def craft(self, reaction_id):
+		success, dead_entities = self.game.craft_reaction(
+			self.player,
+			reaction_id,
+		)
+
+		self.finish_crafting(success, dead_entities)
+		
+	def open_map_crafting(self):
+		from popups import MapCraftingPopup
+
+		MapCraftingPopup(
+			self.winfo_toplevel(),
+			self.game,
+			self.finish_crafting,
+		)
+
+	def finish_crafting(self, success, dead_entities):
+		popup = self.winfo_toplevel()
+		play_screen = popup.root.play_screen
+
+		if self.player in dead_entities:
+			popup.destroy()
+			play_screen.update_screen()
+			play_screen.handle_player_death()
+			return
+
+		self.update_recipes()
+
+		tabs = self.notebook.tabs
+
+		inventory_tab = tabs["Inventory"]
+		inventory_tabs = inventory_tab.inventory_notebook.tabs
+
+		inventory_tabs["Items"].populate()
+		inventory_tabs["Wallet"].populate()
+
+		bar = inventory_tab.encumbrance_bar
+		bar.value = self.player.cur_encumbrance
+		bar.max_value = self.player.max_encumbrance
+		bar.text = (
+			f"Encumbrance: {self.player.cur_encumbrance}"
+			f" / {self.player.max_encumbrance}"
+		)
+		bar.redraw()
+
+		tabs["Health"].tabs["Needs"].populate()
+		tabs["Stats"].populate()
+
+		play_screen.update_screen()
 			
 class NeedsTab(Tab):
 	def __init__(self, parent, game):

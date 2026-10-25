@@ -47,6 +47,8 @@ class Game:
 		
 		self.metals = {}
 		
+		self.ore_objs = {}
+		
 		self.bar_objs = {}
 		
 		self.coin_objs = {}
@@ -62,10 +64,19 @@ class Game:
 		self.initial_production_cycles = 1
 		
 		self.skills = {
+			"blacksmithing": "Blacksmithing",
 			"brewing": "Brewing",
+			"butchering": "Butchering",
+			"cartography": "Cartography",
+			"coinsmithing": "Coinsmithing",
+			"ink_making": "Ink Making",
 			"mining": "Mining",
+			"paper_making": "Paper Making",
+			"smelting": "Smelting",
 			"strength": "Strength",
 			"speed": "Speed",
+			"tanning": "Tanning",
+			"wood_burning": "Wood Burning",
 		}
 		
 	def init_economy(self):
@@ -444,8 +455,7 @@ class Game:
 			gx = random.randint(0, self.world_size - 1)
 			gy = random.randint(0, self.world_size - 1)
 			
-		if settlement is not None:
-			value = self.get_map_value(settlement, cartography_lvl)
+		value = self.get_map_value(cartography_lvl)
 			
 		map_item = items.Map(
 			location=location,
@@ -461,13 +471,61 @@ class Game:
 		
 		return map_item
 		
-	def get_map_value(self, settlement, cartography_lvl):
-		parchment_value = settlement.sub_economy.get_value("parchment")
-		ink_value = settlement.sub_economy.get_value("ink")
+	def craft_map(self, character, location):
+		coordinates = (location.gx, location.gy)
+
+		if character.memory.known_locations.get(coordinates) is not location:
+			return False, []
+
+		if "cartography" not in character.skills:
+			return False, []
+
+		reagents = {
+			"parchment": 1,
+			"ink": 1,
+		}
+
+		for item_id, quantity in reagents.items():
+			if not character.inventory.has_item(item_id, quantity):
+				return False, []
+
+		for item_id, quantity in reagents.items():
+			character.remove_carried_object(
+				item_id,
+				self,
+				quantity,
+			)
+
+		for _ in range(60):
+			dead_entities = self.inc_time(ticks=1)
+
+			if character in dead_entities:
+				return False, dead_entities
+
+		cartography_level = character.get_skill_lvl("cartography")
+
+		map_item = self.create_map(
+			location=location,
+			creator=character.full_name.strip() or "None",
+			cartography_lvl=cartography_level,
+		)
+
+		character.add_carried_object(
+			map_item.id,
+			self,
+			quantity=1,
+		)
+
+		character.gain_skill_xp("cartography")
+
+		return True, []	
 		
-		material_cost = parchment_value + ink_value
 		
-		return int(material_cost + cartography_lvl)
+	def get_map_value(self, cartography_lvl):
+		parchment_value = self.item_type_objs["parchment"].base_value
+		ink_value = self.item_type_objs["ink"].base_value
+
+		return int(parchment_value + ink_value + cartography_lvl)
 	
 	def get_settlement_by_coors(self, gx, gy):
 		for settlement in self.settlements:
@@ -478,6 +536,7 @@ class Game:
 	
 	def resolve_data_references(self):
 		self.generate_metal_items()
+		self.generate_metal_reactions()
 		
 		self.resolve_race_references()
 		
@@ -485,6 +544,8 @@ class Game:
 		
 		self.generate_wines()
 		self.generate_wine_reactions()
+		
+		self.generate_material_reactions()
 		
 	def resolve_race_references(self):
 		for race in self.race_objs.values():
@@ -520,10 +581,13 @@ class Game:
 				name = f"Make {wine.name}",
 				reagents = {
 					fruit_id: 1,
+					"water": 1,
 				},
 				products = {
 					wine_id: 1,
-				}
+				},
+				skill = "brewing",
+				ticks = 60,
 			)
 			
 			self.wine_reaction_objs[reaction.id] = reaction
@@ -531,18 +595,80 @@ class Game:
 			
 	def generate_metal_items(self):
 		for metal_id, metal in self.metals.items():
+			ore = itemtypes.OreType(metal_id, metal)
 			bar = itemtypes.BarType(metal_id, metal)
 			coin = itemtypes.CoinType(metal_id, metal)
 			pickaxe = itemtypes.Pickaxe(metal_id, metal)
 			
+			self.ore_objs[ore.id] = ore
 			self.bar_objs[bar.id] = bar
 			self.coin_objs[coin.id] = coin
 			self.pickaxe_objs[pickaxe.id] = pickaxe
 			
-			for item in (bar, coin, pickaxe):
+			for item in (ore, bar, coin, pickaxe):
 				self.item_type_objs[item.id] = item
 				
 		self.profession_objs["blacksmith"].outputs = list(self.pickaxe_objs)
+			
+	def generate_metal_reactions(self):
+		item_groups = (
+			(self.bar_objs, "smelting"),
+			(self.coin_objs, "coinsmithing"),
+			(self.pickaxe_objs, "blacksmithing"),
+		)
+		
+		for item_objs, skill_id in item_groups:
+			for item in item_objs.values():
+				reaction = crafting.CraftingReaction(
+					id = f"make_{item.id}",
+					name = f"Make {item.name}",
+					reagents = item.reagents.copy(),
+					products = {item.id: 1},
+					skill = skill_id,
+					ticks = 60,
+				)
+				
+				self.crafting_reaction_objs[reaction.id] = reaction
+				
+	def generate_material_reactions(self):
+		reaction = crafting.CraftingReaction(
+			id = "butcher_animal_corpse",
+			name = "Butcher Animal Corpse",
+			reagents = {
+				"animal_corpse": 1,
+			},
+			products = {
+				"animal_meat": 1,
+				"animal_hide": 1,
+			},
+			skill = "butchering",
+			ticks = 60,
+		)
+
+		self.crafting_reaction_objs[reaction.id] = reaction
+
+		item_skills = {
+			"animal_leather": "tanning",
+			"coal": "wood_burning",
+			"ink": "ink_making",
+			"parchment": "paper_making",
+		}
+
+		for item_id, skill_id in item_skills.items():
+			item = self.item_type_objs[item_id]
+
+			reaction = crafting.CraftingReaction(
+				id = f"make_{item.id}",
+				name = f"Make {item.name}",
+				reagents = item.reagents.copy(),
+				products = {
+					item.id: 1,
+				},
+				skill = skill_id,
+				ticks = 60,
+			)
+
+			self.crafting_reaction_objs[reaction.id] = reaction
 			
 	def assign_crafting_reactions(self):
 		self.assign_brewer_reactions()
@@ -562,6 +688,57 @@ class Game:
 			self.regions[coordinates] = Region(gx, gy, biome)
 			
 		return self.regions[coordinates]
+		
+	def craft_reaction(self, character, reaction_id):
+		reaction = self.crafting_reaction_objs.get(reaction_id)
+
+		if reaction is None:
+			return False, []
+
+		if reaction.skill is not None:
+			if reaction.skill not in character.skills:
+				return False, []
+
+		for item_id, quantity in reaction.reagents.items():
+			if item_id in self.coin_objs:
+				available = character.wallet.get_quantity(item_id)
+
+			else:
+				available = character.inventory.get_quantity(item_id)
+
+			if available < quantity:
+				return False, []
+
+		for item_id, quantity in reaction.reagents.items():
+			character.remove_carried_object(
+				item_id,
+				self,
+				quantity,
+			)
+
+		for _ in range(reaction.ticks):
+			dead_entities = self.inc_time(ticks=1)
+
+			if character in dead_entities:
+				return False, dead_entities
+
+		if reaction.skill is not None:
+			skill_level = character.get_skill_lvl(reaction.skill)
+			success_chance = min(100, skill_level)
+
+			character.gain_skill_xp(reaction.skill)
+
+			if random.randint(1, 100) > success_chance:
+				return False, []
+
+		for item_id, quantity in reaction.products.items():
+			character.add_carried_object(
+				item_id,
+				self,
+				quantity,
+			)
+
+		return True, []
 			
 class Entity:
 	def __init__(self):
@@ -650,6 +827,8 @@ class Character(Creature):
 		self.first_name = ""
 		self.middle_name = ""
 		self.last_name = ""
+		
+		self.full_name = f"{self.first_name} {self.middle_name} {self.last_name}"
 		
 	def update_needs(self):
 		for need_id, need_data in self.need_definitions.items():

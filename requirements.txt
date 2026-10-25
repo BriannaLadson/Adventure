@@ -4,3 +4,4 @@ pillow
 terraforge-core
 cqcalendar
 dyecon
+tkinter-tooltip

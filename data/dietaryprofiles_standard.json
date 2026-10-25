@@ -8,6 +8,9 @@
 		},
 		"water": {
 			"thirst": 25
+		},
+		"wine": {
+			"thirst": 10
 		}
 	},
 	"dwarf_dietaryprofile": {

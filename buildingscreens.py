@@ -686,10 +686,10 @@ class TradePopup(Popup):
 		)
 		self.filter_cbx.pack(fill=X)
 		
-		self.filter_cbx.bind("<<ComboboxSelected>>", self.filter_items)
-		
 		self.trade_nb = TradeNotebook(self, root, building)
 		self.trade_nb.pack(fill=BOTH, expand=1)
+		
+		self.filter_cbx.bind("<<ComboboxSelected>>", self.filter_items)
 		
 		ttk.Button(self, text="OK", command=self.close).pack(fill=X)
 		
@@ -712,6 +712,9 @@ class TradePopup(Popup):
 		self.player_currency_var.set(f"You ({currency_name}: {player_currency_quantity})")
 		
 	def filter_items(self, event=None):
+		if not hasattr(self, "trade_nb"):
+			return
+			
 		self.trade_nb.update_tabs()
 		
 	def matches_filter(self, item):

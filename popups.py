@@ -261,7 +261,7 @@ class ItemPopup(Popup):
 			nb = sheet.character_sheet_nb
 			
 			inventory_notebook = nb.tabs["Inventory"]
-			inventory_notebook.tabs["Items"].populate()
+			inventory_notebook.inventory_notebook.tabs["Items"].populate()
 			
 			nb.tabs["Health"].tabs["Needs"].populate()
 			
@@ -804,3 +804,101 @@ class DropQuantityPopup(Popup):
 		self.destroy()
 
 		self.callback(quantity)
+		
+class MapCraftingPopup(Popup):
+	def __init__(self, root, game, on_complete):
+		super().__init__(root)
+
+		self.game = game
+		self.player = game.player
+		self.on_complete = on_complete
+
+		ttk.Label(
+			self,
+			text="Draw Map",
+			anchor="center",
+		).pack(fill=X)
+
+		locations = sorted(
+			self.player.memory.known_locations.values(),
+			key=lambda location: location.name,
+		)
+
+		self.location_options = {
+			f"{location.name} ({location.gx}, {location.gy})": location
+			for location in locations
+		}
+
+		if self.location_options:
+			ttk.Label(
+				self,
+				text="Choose a known location:",
+			).pack(fill=X)
+
+			self.location_var = StringVar(
+				value=next(iter(self.location_options))
+			)
+
+			ttk.Combobox(
+				self,
+				textvariable=self.location_var,
+				values=list(self.location_options),
+				state="readonly",
+				width=40,
+			).pack(fill=X)
+
+			ttk.Label(
+				self,
+				text="Requires: 1 Parchment and 1 Ink",
+			).pack(fill=X)
+
+			can_make = (
+				self.player.inventory.has_item("parchment", 1)
+				and self.player.inventory.has_item("ink", 1)
+				and "cartography" in self.player.skills
+			)
+
+			ttk.Button(
+				self,
+				text="Draw Map",
+				command=self.confirm,
+				state=NORMAL if can_make else DISABLED,
+			).pack(fill=X)
+
+		else:
+			ttk.Label(
+				self,
+				text="You have not discovered any locations.",
+			).pack(fill=X)
+
+		ttk.Button(
+			self,
+			text="Cancel",
+			command=self.close,
+		).pack(fill=X)
+
+		self.center()
+
+	def confirm(self):
+		location = self.location_options.get(
+			self.location_var.get()
+		)
+
+		if location is None:
+			return
+
+		success, dead_entities = self.game.craft_map(
+			self.player,
+			location,
+		)
+
+		self.close()
+		self.on_complete(success, dead_entities)
+
+	def close(self):
+		parent = self.root
+
+		self.destroy()
+
+		if parent.winfo_exists():
+			parent.grab_set()

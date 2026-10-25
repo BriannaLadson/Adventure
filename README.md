@@ -1,4 +1,4 @@
-# Adventure v0.18.0
+# Adventure v0.19.0
 
 Adventure is an open-world sandbox RPG simulation built using Python and Tkinter.
 
@@ -38,21 +38,32 @@ For more information on game systems, modding, and development, see the project 
 - Ancestry-based generation of need capacities, decay rates, and dietary compatibility
 - Dietary compatibility checks to ensure generated characters can satisfy their needs
 - Character sheet Identity tab displaying ancestry percentages
+- Mine buildings with pickaxe-required mining sessions lasting 1–24 hours
+- Mining success based on regional minerals and Mining skill
+- JSON-defined metals with automatically generated ores, bars, coins, and pickaxes
+- Blacksmith production of metal pickaxes
+- Market category filtering and scrollable Buy/Sell lists
+- Player crafting with skill filters and recipe tooltips
+- Skill-based crafting success, ingredient consumption, and crafting time
+- Player-created maps of discovered settlements with skill-based coordinate accuracy
 
-## What's New in v0.18.0
+## What's New in v0.19.0
 
-- Added mine buildings where players with a pickaxe can choose to mine for 1–24 hours.
-- Mining advances game time and places collected ore directly into the player's inventory.
-- Mining success chance averages regional mineral abundance and the player's Mining skill.
-- Mining grants skill XP, processes character needs, and stops when needs become low.
-- Added metal-specific pickaxes produced by blacksmiths.
-- Added simplified metal definitions in `metals_standard.json`, containing each metal's name and base value.
-- Bars, coins, and pickaxes are now generated from metal definitions rather than separate bar and coin JSON files.
-- Added item categories, a market category filter, and scrollbars for Buy/Sell lists.
+- Added player crafting for brewing, smelting, coinsmithing, blacksmithing, butchering, tanning, wood burning, ink making, and parchment making.
+- The Crafting tab lists reactions with a skill filter and hover tooltips showing ingredients, products, and time costs.
+- Crafting success chance equals the relevant skill level as a percentage, capped at 100%.
+- Failed crafting attempts consume ingredients and time but still grant skill XP.
+- Added player cartography with a popup for selecting a discovered settlement.
+- Drawing a map consumes Parchment and Ink, advances time, and grants Cartography XP. Cartography skill determines coordinate accuracy.
+- Player and settlement maps now share a base-value formula: Parchment base value + Ink base value + Cartography level.
+- Metal definitions now generate ores alongside bars, coins, and pickaxes, removing the need for separate ore JSON definitions.
+- Coinsmiths can produce any loaded coin type and add it to the settlement's wallet.
+- Parchment production now requires Animal Hide.
+- Added `tkinter-tooltip` as a dependency.
 
 ### Save Compatibility
 
-Start a new save for v0.18.0 to include mine buildings, blacksmiths, and generated metal items. Existing saves are not migrated to the new systems.
+Start a new save for v0.19.0. Existing saves are not migrated to include the new crafting skills, reactions, and generated ore definitions.
 
 ## Screenshots
 
@@ -105,7 +116,7 @@ pip install -r requirements.txt
 Or manually install dependencies:
 
 ```bash
-pip install terraforge-core cqcalendar dyecon numpy pillow noise
+pip install terraforge-core cqcalendar dyecon numpy pillow noise tkinter-tooltip
 ```
 
 ## Running the Project
@@ -124,6 +135,7 @@ Current dependencies include:
 - numpy
 - pillow
 - noise
+- tkinter-tooltip
 
 ## Libraries
 

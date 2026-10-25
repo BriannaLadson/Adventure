@@ -6,5 +6,17 @@
 	"platinum": {
 		"name": "Platinum",
 		"base_value": 20
+	},
+	"silver": {
+		"name": "Silver",
+		"base_value": 8
+	},
+	"copper": {
+		"name": "Copper",
+		"base_value": 2
+	},
+	"iron": {
+		"name": "Iron",
+		"base_value": 4
 	}
 }

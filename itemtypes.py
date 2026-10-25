@@ -112,16 +112,17 @@ class FruitType(ItemType):
 		self.biomes = biomes
 		
 class OreType(ItemType):
-	def __init__(self, *args):
+	def __init__(self, metal_id, metal):
 		super().__init__(
+			id = f"{metal_id}_ore",
+			name = f"{metal['name']} Ore",
+			type_id = "ore",
+			base_value = max(1, metal["base_value"] // 2),
+			weight = 1,
 			categories = ["Material", "Ore"]
 		)
 		
-		self.id = args[0]
-		
-		self.name = args[1]
-		
-		self.base_value = args[2]
+		self.material = metal_id
 		
 class AnimalCorpse(ItemType):
 	def __init__(self):
@@ -239,6 +240,10 @@ class Parchment(ItemType):
 		
 		self.base_value = 8
 		
+		self.reagents = {
+			"animal_hide": 1,
+		}
+		
 class Water(ItemType):
 	def __init__(self):
 		super().__init__(
@@ -270,6 +275,7 @@ class Wine(ItemType):
 		
 		self.reagents = {
 			"fruit": 1,
+			"water": 1,
 		}
 		
 		self.actions = [

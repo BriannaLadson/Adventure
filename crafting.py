@@ -5,6 +5,8 @@ class CraftingReaction:
 		name,
 		reagents,
 		products,
+		skill=None,
+		ticks=1
 	):
 		self.id = id
 		
@@ -13,3 +15,7 @@ class CraftingReaction:
 		self.reagents = reagents
 		
 		self.products = products
+		
+		self.skill = skill
+		
+		self.ticks = ticks

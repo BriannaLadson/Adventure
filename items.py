@@ -14,7 +14,7 @@ class Item:
 		
 		self.weight = 1
 		
-		self.categories = []
+		self.categories = categories = []
 
 class Map(Item):
 	def __init__(self, location, gx, gy, creator=None, cartography_lvl=1, value=1):

@@ -316,30 +316,35 @@ class Coinsmith(Profession):
 		
 		coinsmiths = settlement.get_active_workers(self)
 		
-		coin_id = settlement.civilization.culture.currency
+		coin_ids = list(game.coin_objs)
 		
-		if coin_id not in game.coin_objs:
+		if not coin_ids:
 			return
 			
-		coin_obj = game.coin_objs[coin_id]
-		reagents = getattr(coin_obj, "reagents", {})
-		
 		for _ in range(coinsmiths):
+			coin_id = random.choice(coin_ids)
+			
+			coin = game.coin_objs[coin_id]
+			
+			reagents = coin.reagents
+			
 			can_make = all(
-				sub_economy.has_item(reagent_id, amount) for reagent_id, amount in reagents.items()
+				sub_economy.has_item(reagent_id, quantity)
+				for reagent_id, quantity in reagents.items()
 			)
 			
 			if can_make:
-				for reagent_id, amount in reagents.items():
-					sub_economy.remove_item(reagent_id, amount)
-					sub_economy.change_modifier(reagent_id, -amount)
+				for reagent_id, quantity in reagents.items():
+					sub_economy.remove_item(reagent_id, quantity)
+					
+					sub_economy.change_modifier(reagent_id, -quantity)
 					
 				settlement.wallet.add_coins(coin_id, 1)
 				
 			else:
-				for reagent_id, amount in reagents.items():
-					if not sub_economy.has_item(reagent_id, amount):
-						sub_economy.change_modifier(reagent_id, amount)
+				for reagent_id, quantity in reagents.items():
+					if not sub_economy.has_item(reagent_id, quantity):
+						sub_economy.change_modifier(reagent_id, quantity)
 					
 class WaterCollector(Profession):
 	def __init__(self):

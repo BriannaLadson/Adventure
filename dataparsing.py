@@ -101,26 +101,6 @@ def load_biome_objs(game):
 		
 	game.biome_objs = biome_objs
 	
-def load_coins(game, data):
-	coin_objs = {}
-	
-	for coin in data:
-		id = coin
-		
-		coin_data = data[coin]
-		
-		coin_obj = itemtypes.CoinType(
-			id,
-			coin_data["name"],
-			coin_data["reagents"],
-			coin_data["base_value"],
-		)
-		
-		coin_objs[id] = coin_obj
-		game.item_type_objs[id] = coin_obj
-		
-	game.coin_objs = coin_objs
-	
 def load_dietary_profiles(game, data):
 	dietary_profile_objs = {}
 	
@@ -177,38 +157,6 @@ def load_name_systems(game, data):
 		
 	game.name_system_objs = name_system_objs
 	
-def load_ores(game, data):
-	ore_objs = {}
-	
-	for ore in data:
-		id = ore
-		
-		ore_data = data[ore]
-		
-		ore_obj = itemtypes.OreType(
-			id,
-			ore_data["name"],
-			ore_data["base_value"],
-		)
-		
-		ore_objs[id] = ore_obj
-		game.item_type_objs[id] = ore_obj
-	
-	game.ore_objs = ore_objs
-	
-def load_professions(game, data):
-	for profession in data:
-		id = profession
-		
-		profession_data = data[profession]
-		
-		profession_obj = professions.CustomProfession(
-			id,
-			profession_data["name"]
-		)
-		
-		game.profession_objs[id] = profession_obj
-	
 	
 def load_races(game, data):
 	race_objs = {}
@@ -246,7 +194,5 @@ PREFIX_LOADERS = {
 	"fruits_": load_fruits,
 	"metals_": load_metals,
 	"namesystems_": load_name_systems,
-	"ores_": load_ores,
-	"professions_": load_professions,
 	"races_": load_races,
 }
