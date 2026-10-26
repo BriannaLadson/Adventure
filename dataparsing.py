@@ -183,11 +183,15 @@ def load_races(game, data):
 			race_data["needs"],
 			race_data["dietary_profile"],
 			race_data["capital_buildings"],
+			race_data["character_name_systems"],
 		)
 		
 		race_objs[id] = race_obj
 		
 	game.race_objs = race_objs
+	
+def load_roles(game, data):
+	game.role_defs.update(data)
 	
 PREFIX_LOADERS = {
 	"dietaryprofiles_": load_dietary_profiles,
@@ -195,4 +199,5 @@ PREFIX_LOADERS = {
 	"metals_": load_metals,
 	"namesystems_": load_name_systems,
 	"races_": load_races,
+	"roles_": load_roles,
 }

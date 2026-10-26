@@ -1,4 +1,4 @@
-# Adventure v0.19.0
+# Adventure v0.20.0
 
 Adventure is an open-world sandbox RPG simulation built using Python and Tkinter.
 
@@ -33,7 +33,7 @@ For more information on game systems, modding, and development, see the project 
 - Checking accounts with procedurally generated minimum opening deposits
 - Checking account deposits, withdrawals, balances, and account closure
 - Data-driven architecture designed for expansion and modding
-- Tabbed character creation with Identity, Items, and Start settings
+- Tabbed character creation with Identity, Skill Potential, Items, and Start settings
 - Ratio-based character ancestry with support for mixed ancestry
 - Ancestry-based generation of need capacities, decay rates, and dietary compatibility
 - Dietary compatibility checks to ensure generated characters can satisfy their needs
@@ -46,24 +46,34 @@ For more information on game systems, modding, and development, see the project 
 - Player crafting with skill filters and recipe tooltips
 - Skill-based crafting success, ingredient consumption, and crafting time
 - Player-created maps of discovered settlements with skill-based coordinate accuracy
+- JSON-defined starting roles with related skills and equipment
+- Selectable starting skill experience for character roles
+- Manual character naming and procedural name generation
+- Human, Dwarf, and Elf civilizations with distinct profession distributions
+- Persistent town NPCs generated from settlement demographics
+- Goal-based NPC AI with action queues for wandering and idling
+- Wait command (`.`) that advances one turn without moving
+- Configurable potential for each skill, determining maximum XP gained per action
 
-## What's New in v0.19.0
+## What's New in v0.20.0
 
-- Added player crafting for brewing, smelting, coinsmithing, blacksmithing, butchering, tanning, wood burning, ink making, and parchment making.
-- The Crafting tab lists reactions with a skill filter and hover tooltips showing ingredients, products, and time costs.
-- Crafting success chance equals the relevant skill level as a percentage, capped at 100%.
-- Failed crafting attempts consume ingredients and time but still grant skill XP.
-- Added player cartography with a popup for selecting a discovered settlement.
-- Drawing a map consumes Parchment and Ink, advances time, and grants Cartography XP. Cartography skill determines coordinate accuracy.
-- Player and settlement maps now share a base-value formula: Parchment base value + Ink base value + Cartography level.
-- Metal definitions now generate ores alongside bars, coins, and pickaxes, removing the need for separate ore JSON definitions.
-- Coinsmiths can produce any loaded coin type and add it to the settlement's wallet.
-- Parchment production now requires Animal Hide.
-- Added `tkinter-tooltip` as a dependency.
+- Added starting roles defined through JSON, including Peasant and skill-based professions.
+- Added starting experience options: Untrained, Beginner, Apprentice, Journeyman, and Master.
+- Added first, middle, and last name entries with individual random name generation buttons and a naming system selector.
+- Added Human, Dwarf, and Elf character naming systems.
+- Added Elves with their own civilizations, settlements, dietary profile, currency, and nature-focused profession distribution.
+- Added persistent NPCs to town maps, with generated names, ancestry, and professions.
+- Generating an NPC removes one corresponding worker from the settlement's background demographics.
+- Added an extensible NPC AI system with goals, queued actions, wandering, and idling.
+- NPCs avoid buildings, occupied NPC tiles, and the player's tile when moving.
+- Added the `.` key to wait one turn.
+- Added a Skill Potential tab to character creation, with values from 1–100 and a default of 1.
+- Added individual skill potential randomization buttons and presets for changing all potentials at once.
+- Skill potential now determines the maximum XP gained per action.
 
 ### Save Compatibility
 
-Start a new save for v0.19.0. Existing saves are not migrated to include the new crafting skills, reactions, and generated ore definitions.
+Start a new save for v0.20.0 to include roles, Elves, character naming systems, NPCs, and skill potential. Existing saves are not migrated to the new systems.
 
 ## Screenshots
 

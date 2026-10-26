@@ -1,0 +1,124 @@
+{
+	"peasant": {
+		"name": "Peasant",
+		"description": "Starts without specialized skills or equipment.",
+		"skills": [],
+		"items": {}
+	},
+	"butcher": {
+		"name": "Butcher",
+		"description": "Processes animal corpses into usable products.",
+		"skills": [
+			"butchering"
+		],
+		"items": {
+			"animal_corpse": 5
+		}
+	},
+	"tanner": {
+		"name": "Tanner",
+		"description": "Produces leather.",
+		"skills": [
+			"tanning"
+		],
+		"items": {
+			"animal_hide": 5
+		}
+	},
+	"miner": {
+		"name": "Miner",
+		"description": "Extracts ore from mines.",
+		"skills": [
+			"mining"
+		],
+		"items": {
+			"iron_pickaxe": 1
+		}
+	},
+	"smelter": {
+		"name": "Smelter",
+		"description": "Produces metal bars.",
+		"skills": [
+			"smelting"
+		],
+		"items": {
+			"iron_ore": 5,
+			"coal": 5
+		}
+	},
+	"blacksmith": {
+		"name": "Blacksmith",
+		"description": "Forges metal tools.",
+		"skills": [
+			"blacksmithing"
+		],
+		"items": {
+			"iron_bar": 5,
+			"coal": 5,
+			"wood": 5
+		}
+	},
+	"coinsmith": {
+		"name": "Coinsmith",
+		"description": "Mints coins.",
+		"skills": [
+			"coinsmithing"
+		],
+		"items": {
+			"copper_bar": 5,
+			"coal": 5
+		}
+	},
+	"wood_burner": {
+		"name": "Wood Burner",
+		"description": "Produces coal.",
+		"skills": [
+			"wood_burning"
+		],
+		"items": {
+			"wood": 5
+		}
+	},
+	"paper_maker": {
+		"name": "Paper Maker",
+		"description": "Produces writing materials.",
+		"skills": [
+			"paper_making"
+		],
+		"items": {
+			"animal_hide": 5
+		}
+	},
+	"ink_maker": {
+		"name": "Ink Maker",
+		"description": "Produces ink.",
+		"skills": [
+			"ink_making"
+		],
+		"items": {
+			"coal": 5
+		}
+	},
+	"cartographer": {
+		"name": "Cartographer",
+		"description": "Draws maps of known locations.",
+		"skills": [
+			"cartography"
+		],
+		"items": {
+			"parchment": 5,
+			"ink": 5
+		}
+	},
+	"brewer": {
+		"name": "Brewer",
+		"description": "Produces alcoholic drinks.",
+		"skills": [
+			"brewing"
+		],
+		"items": {
+			"apple": 5,
+			"water": 5
+		}
+	}
+}

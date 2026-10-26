@@ -1,3 +1,6 @@
+import ai
+import entities
+
 def process_cmd(event, screen, cmd):
 	if not screen.can_process_input:
 		return
@@ -22,6 +25,15 @@ def process_cmd(event, screen, cmd):
 		new_locations = screen.discover_locations()
 		
 		screen.update_screen()
+		
+		town_map = screen.tile_map.generator
+
+		if (
+			game.player.lx is not None
+			and isinstance(town_map, entities.TownMapGenerator)
+		):
+			ai.start_ai(game, town_map)
+			screen.tile_map.update_map()
 		
 		building = screen.check_building_interaction()
 		
@@ -54,6 +66,9 @@ def pickup_item(screen, cmd):
 	
 	settlement = game.get_settlement_by_coors(player.gx, player.gy)
 	
+	if settlement is None:
+		return 1
+	
 	coors = (
 		player.lx,
 		player.ly,
@@ -71,6 +86,9 @@ def pickup_item(screen, cmd):
 	
 	return 1
 	
+def wait(screen, cmd):
+	return 1
+	
 cmd_dict = {
 	"north": move,
 	"northwest": move,
@@ -82,4 +100,5 @@ cmd_dict = {
 	"east": move,
 	"in": move,
 	"pickup_item": pickup_item,
+	"wait": wait,
 }

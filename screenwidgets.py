@@ -1,6 +1,7 @@
 from tkinter import *
 from tkinter import ttk
 from tktooltip import ToolTip
+import random
 
 import helpfunctions as helpf
 
@@ -23,6 +24,7 @@ class CharacterCreationNotebook(CustomNotebook):
 		
 		self.tabs = {
 			"Identity": CharacterCreationIdentityTab(self, screen),
+			"Potential": CharacterCreationSkillPotentialTab(self, screen),
 			"Items": CharacterCreationItemsTab(self, screen),
 			"Start": CharacterCreationStartTab(self, screen),
 		}
@@ -197,6 +199,22 @@ class ScrollableListbox(ttk.Frame):
 	def delete(self, *args):
 		return self.listbox.delete(*args)
 
+class NameWidget(ttk.Frame):
+	def __init__(self, parent, lbl_txt):
+		super().__init__(parent)
+
+		ttk.Label(self, text=lbl_txt).pack(side=LEFT)
+
+		self.var = StringVar()
+
+		ttk.Entry(
+			self,
+			textvariable=self.var,
+		).pack(side=LEFT, fill=X, expand=True)
+
+		self.btn = ttk.Button(self, text="?")
+		self.btn.pack(side=LEFT)
+
 #Tabs	
 class Tab(ttk.Frame):
 	def __init__(self, parent):
@@ -214,6 +232,45 @@ class CharacterCreationIdentityTab(Tab):
 		self.scrollable_frame.pack(fill=BOTH, expand=1)
 		scr_fr = self.scrollable_frame.scrolling_frame
 		
+		#Name
+		name_fr = ttk.Label(scr_fr)
+		name_fr.pack(pady=5)
+		
+		name_lbl = ttk.Label(name_fr, text="Name", anchor="center")
+		name_lbl.pack()
+		
+		self.naming_systems = {
+			system.name: system
+			for system in self.game.name_system_objs.values()
+		}
+
+		self.naming_system_var = StringVar(
+			value=next(iter(self.naming_systems), "")
+		)
+
+		ttk.Combobox(
+			name_fr,
+			textvariable=self.naming_system_var,
+			values=list(self.naming_systems),
+			state="readonly",
+		).pack(fill=X)
+
+		screen.fname_widget = NameWidget(name_fr, "First Name: ")
+		screen.mname_widget = NameWidget(name_fr, "Middle Name: ")
+		screen.lname_widget = NameWidget(name_fr, "Last Name: ")
+
+		for widget in (
+			screen.fname_widget,
+			screen.mname_widget,
+			screen.lname_widget,
+		):
+			widget.pack(fill=X, pady=2)
+			widget.btn.config(
+				command=lambda widget=widget: self.generate_name(widget)
+			)
+			
+		ttk.Separator(scr_fr, orient="horizontal").pack(fill=X)
+		
 		#Race
 		race_fr = ttk.Frame(scr_fr)
 		race_fr.pack(pady=5)
@@ -229,6 +286,210 @@ class CharacterCreationIdentityTab(Tab):
 		
 		race_cbx = ttk.Combobox(race_fr, textvariable=self.race_var, values=list(self.race_options.keys()), state="readonly")
 		race_cbx.pack()
+		
+		ttk.Separator(scr_fr, orient="horizontal").pack(fill=X)
+		
+		#Role
+		role_fr = ttk.Frame(scr_fr)
+		role_fr.pack(pady=5)
+
+		ttk.Label(
+			role_fr,
+			text="Role",
+		).pack()
+
+		screen.role_options = {
+			role["name"]: role_id
+			for role_id, role in self.game.role_defs.items()
+		}
+
+		screen.role_var = StringVar(
+			value=self.game.role_defs["peasant"]["name"]
+		)
+
+		self.role_cbx = ttk.Combobox(
+			role_fr,
+			textvariable=screen.role_var,
+			values=list(screen.role_options),
+			state="readonly",
+		)
+		self.role_cbx.pack()
+
+		self.role_tooltip = ToolTip(
+			self.role_cbx,
+			msg=self.get_role_description,
+			delay=0.4,
+			follow=False,
+			justify=LEFT,
+			width=350,
+		)
+
+		experience_fr = ttk.Frame(scr_fr)
+		experience_fr.pack(pady=5)
+
+		ttk.Label(
+			experience_fr,
+			text="Starting Experience",
+		).pack()
+
+		screen.experience_options = {
+			"Untrained": 1,
+			"Beginner": 25,
+			"Apprentice": 50,
+			"Journeyman": 75,
+			"Master": 100,
+		}
+
+		screen.experience_var = StringVar(value="Untrained")
+
+		self.experience_cbx = ttk.Combobox(
+			experience_fr,
+			textvariable=screen.experience_var,
+			values=list(screen.experience_options),
+			state="readonly",
+		)
+		self.experience_cbx.pack()
+
+		self.experience_tooltip = ToolTip(
+			self.experience_cbx,
+			msg="Sets starting levels for the role's related skills.",
+			delay=0.4,
+			follow=False,
+		)
+
+		self.role_cbx.bind(
+			"<<ComboboxSelected>>",
+			self.update_role,
+		)
+
+		self.update_role()
+		
+	def get_role_description(self):
+		screen = self.screen
+		role_id = screen.role_options[screen.role_var.get()]
+		role = self.game.role_defs[role_id]
+
+		lines = [role["description"]]
+
+		if role["skills"]:
+			skill_names = [
+				self.game.skills[skill_id]
+				for skill_id in role["skills"]
+			]
+
+			lines.extend([
+				"",
+				"Related skills: " + ", ".join(skill_names),
+			])
+
+		if role["items"]:
+			lines.extend(["", "Starting items:"])
+
+			for item_id, quantity in role["items"].items():
+				item = self.game.item_type_objs[item_id]
+				lines.append(f"{item.name} x{quantity}")
+
+		return "\n".join(lines)
+
+	def update_role(self, event=None):
+		screen = self.screen
+		role_id = screen.role_options[screen.role_var.get()]
+		role = self.game.role_defs[role_id]
+
+		if role["skills"]:
+			self.experience_cbx.config(state="readonly")
+
+		else:
+			screen.experience_var.set("Untrained")
+			self.experience_cbx.config(state=DISABLED)
+			
+	def generate_name(self, name_widget):
+		system = self.naming_systems.get(self.naming_system_var.get())
+
+		if system is not None:
+			name_widget.var.set(system.get_name())
+			
+class CharacterCreationSkillPotentialTab(Tab):
+	def __init__(self, parent, screen):
+		super().__init__(parent)
+
+		self.scrollable_frame = ScrollableFrame(self)
+		self.scrollable_frame.pack(fill=BOTH, expand=1)
+
+		frame = self.scrollable_frame.scrolling_frame
+
+		self.potential_options = {
+			"Untrained": 1,
+			"Beginner": 25,
+			"Apprentice": 50,
+			"Journeyman": 75,
+			"Master": 100
+		}
+
+		preset_frame = ttk.Frame(frame)
+		preset_frame.pack(pady=10)
+
+		ttk.Label(
+			preset_frame,
+			text="Set All: "
+		).pack(side=LEFT)
+
+		self.preset_var = StringVar(value="Untrained")
+
+		preset_cbx = ttk.Combobox(
+			preset_frame,
+			textvariable=self.preset_var,
+			values=list(self.potential_options),
+			state="readonly"
+		)
+		preset_cbx.pack(side=LEFT)
+		preset_cbx.bind("<<ComboboxSelected>>", self.apply_preset)
+
+		ttk.Label(
+			frame,
+			text="Potential determines the maximum XP gained per skill action.",
+			wraplength=400
+		).pack(pady=5)
+
+		self.skill_potential_vars = screen.skill_potential_vars = {}
+
+		skills_frame = ttk.Frame(frame)
+		skills_frame.pack(padx=10, pady=5)
+
+		for row, (skill_id, skill_name) in enumerate(screen.game.skills.items()):
+			skill_lbl = ttk.Label(
+				skills_frame,
+				text=skill_name
+			)
+			skill_lbl.grid(row=row, column=0, sticky=W, padx=5, pady=3)
+
+			var = StringVar(value="1")
+			self.skill_potential_vars[skill_id] = var
+
+			ttk.Spinbox(
+				skills_frame,
+				from_=1,
+				to=100,
+				textvariable=var,
+				state="readonly",
+				width=5
+			).grid(row=row, column=1, padx=5, pady=3)
+
+			ttk.Button(
+				skills_frame,
+				text="?",
+				width=3,
+				command=lambda v=var: self.randomize_potential(v)
+			).grid(row=row, column=2, padx=5, pady=3)
+
+	def apply_preset(self, event=None):
+		potential = self.potential_options[self.preset_var.get()]
+
+		for var in self.skill_potential_vars.values():
+			var.set(str(potential))
+
+	def randomize_potential(self, var):
+		var.set(str(random.randint(1, 100)))
 		
 class CharacterCreationItemsTab(Tab):
 	def __init__(self, parent, screen):
@@ -261,8 +522,8 @@ class CharacterCreationItemsTab(Tab):
 		self.currency_quantity_var = screen.currency_quantity_var = StringVar(value=100)
 		
 		currency_quantity_ent = ttk.Entry(start_currency_fr, textvariable=self.currency_quantity_var)
-		currency_quantity_ent.grid(row=1, column=1)
-		
+		currency_quantity_ent.grid(row=1, column=1)	
+	
 class CharacterCreationStartTab(Tab):
 	def __init__(self, parent, screen):
 		super().__init__(parent)
@@ -304,6 +565,17 @@ class CharacterSheetIdentityTab(Tab):
 		scr_fr = self.scrollable_frame.scrolling_frame
 		helpf.destroy_children_widgets(scr_fr)
 		
+		#Name
+		name_lbl = ttk.Label(scr_fr, text="Name", anchor="center").pack(fill=X)
+		
+		full_name_lbl = ttk.Label(scr_fr, text=self.player.full_name, anchor="center").pack()
+		
+		ttk.Separator(scr_fr, orient="horizontal").pack(fill=X)
+		
+		
+		#Ancestry
+		ancestry_lbl = ttk.Label(scr_fr, text="Ancestry", anchor="center").pack(fill=X)
+		
 		ancestry = sorted(
 			self.player.ancestry.items(),
 			key=lambda entry: entry[1],
@@ -315,7 +587,7 @@ class CharacterSheetIdentityTab(Tab):
 			percentage = f"{ratio * 100:.2f}".rstrip("0").rstrip(".")
 			
 			row_fr = ttk.Frame(scr_fr)
-			row_fr.pack(fill=X)
+			row_fr.pack()
 			
 			ttk.Label(row_fr, text=race.name, anchor="center").pack(side=LEFT)
 			

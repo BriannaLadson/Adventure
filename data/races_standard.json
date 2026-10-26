@@ -82,7 +82,10 @@
 				"decay": 1
 			}
 		},
-		"dietary_profile": "human_dietaryprofile"
+		"dietary_profile": "human_dietaryprofile",
+		"character_name_systems": [
+			"human_names"
+		]
 	},
 	"dwarf": {
 		"name": "Dwarf",
@@ -167,6 +170,95 @@
 				"decay": 1
 			}
 		},
-		"dietary_profile": "dwarf_dietaryprofile"
+		"dietary_profile": "dwarf_dietaryprofile",
+		"character_name_systems": [
+			"dwarf_names"
+		]
+	},
+	"elf": {
+		"name": "Elf",
+		"civilization_number": 20,
+		"civilization_name_systems": [
+			"elf_civilization_names"
+		],
+		"settlement_number": 10,
+		"settlement_biomes": [
+			"lowlands",
+			"wetlands",
+			"coldlands",
+			"hotlands"
+		],
+		"settlement_char": "E",
+		"settlement_char_color": "#228B22",
+		"settlement_name_systems": [
+			"elf_settlement_names"
+		],
+		"capital_buildings": {
+			"market_building": {
+				"min_quantity": 1,
+				"max_quantity": 1,
+				"priority": 100
+			},
+			"bank_building": {
+				"min_quantity": 1,
+				"max_quantity": 1,
+				"priority": 100
+			},
+			"mine_building": {
+				"min_quantity": 1,
+				"max_quantity": 1,
+				"priority": 100
+			}
+		},
+		"settlement_buildings": {
+			"market_building": {
+				"min_quantity": 1,
+				"max_quantity": 1,
+				"priority": 100
+			},
+			"bank_building": {
+				"min_quantity": 1,
+				"max_quantity": 1,
+				"priority": 100
+			},
+			"mine_building": {
+				"min_quantity": 0,
+				"max_quantity": 1,
+				"priority": 50
+			}
+		},
+		"settlement_professions": {
+			"hunter": [50, 100],
+			"butcher": [30, 80],
+			"ink_maker": [0, 50],
+			"tanner": [30, 80],
+			"tree_cutter": [50, 100],
+			"paper_maker": [20, 60],
+			"wood_burner": [20, 60],
+			"cartographer": [0, 5],
+			"miner": [0, 30],
+			"smelter": [0, 30],
+			"coinsmith": [0, 50],
+			"water_collector": [50, 100],
+			"forager": [50, 100],
+			"brewer": [20, 60],
+			"blacksmith": [0, 10]
+		},
+		"currency": "silver_coin",
+		"settlement_currency": [0, 1000],
+		"needs": {
+			"hunger": {
+				"max": 100,
+				"decay": 1
+			},
+			"thirst": {
+				"max": 100,
+				"decay": 1
+			}
+		},
+		"dietary_profile": "elf_dietaryprofile",
+		"character_name_systems": [
+			"elf_names"
+		]
 	}
 }

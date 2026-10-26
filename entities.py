@@ -40,6 +40,8 @@ class Game:
 		
 		self.building_type_objs = buildingtypes.BUILDING_TYPES
 		
+		self.role_defs = {}
+		
 		self.crafting_reaction_objs = {}
 		self.wine_reaction_objs = {}
 		
@@ -77,6 +79,24 @@ class Game:
 			"speed": "Speed",
 			"tanning": "Tanning",
 			"wood_burning": "Wood Burning",
+		}
+		
+		self.max_npcs = 25
+		
+		self.skill_descriptions = {
+			"blacksmithing": "Determines your chance of successfully crafting metal tools.",
+			"brewing": "Determines your chance of successfully brewing drinks.",
+			"butchering": "Determines your chance of successfully processing animal corpses.",
+			"cartography": "Determines how accurately you record location information on maps.",
+			"coinsmithing": "Determines your chance of successfully crafting coins.",
+			"ink_making": "Determines your chance of successfully making ink.",
+			"mining": "Improves your chance of collecting ore while mining.",
+			"paper_making": "Determines your chance of successfully making parchment.",
+			"smelting": "Determines your chance of successfully smelting metal.",
+			"speed": "Reduces the time required to travel across the overworld.",
+			"strength": "Increases the weight you can carry.",
+			"tanning": "Determines your chance of successfully processing hides into leather.",
+			"wood_burning": "Determines your chance of successfully producing coal."
 		}
 		
 	def init_economy(self):
@@ -739,6 +759,96 @@ class Game:
 			)
 
 		return True, []
+		
+	def generate_settlement_npcs(self, settlement, town_map):
+		if settlement.npcs is not None:
+			return
+
+		races = {
+			race_id: quantity
+			for race_id, quantity in settlement.races.items()
+			if quantity > 0
+		}
+
+		professions = {
+			profession_id: quantity
+			for profession_id, quantity in settlement.professions.items()
+			if quantity > 0
+		}
+
+		positions = [
+			(x, y)
+			for y, row in enumerate(town_map.map_array)
+			for x, tile in enumerate(row)
+			if tile == TownForge.GROUND
+		]
+
+		player = self.player
+
+		if (player.gx, player.gy) == (settlement.gx, settlement.gy):
+			positions = [
+				position for position in positions
+				if position != (player.lx, player.ly)
+			]
+
+		count = min(
+			self.max_npcs,
+			sum(races.values()),
+			sum(professions.values()),
+			len(positions)
+		)
+
+		settlement.npcs = []
+
+		for lx, ly in random.sample(positions, count):
+			race_id = random.choices(
+				list(races),
+				weights=list(races.values())
+			)[0]
+
+			profession_id = random.choices(
+				list(professions),
+				weights=list(professions.values())
+			)[0]
+
+			npc = NPC({race_id: 1}, self.race_objs, self.skills)
+
+			npc.settlement = settlement
+			npc.profession_id = profession_id
+
+			npc.gx = settlement.gx
+			npc.gy = settlement.gy
+			npc.lx = lx
+			npc.ly = ly
+			npc.lz = lz
+
+			race = self.race_objs[race_id]
+			name_system_id = race.get_name_system_id("character")
+
+			if name_system_id is not None:
+				name_system = self.name_system_objs[name_system_id]
+
+				npc.first_name = name_system.get_name()
+				npc.last_name = name_system.get_name()
+
+			npc.full_name = " ".join(
+				part for part in (
+					npc.first_name,
+					npc.middle_name,
+					npc.last_name
+				)
+				if part
+			)
+
+			settlement.npcs.append(npc)
+
+			races[race_id] -= 1
+			professions[profession_id] -= 1
+
+			settlement.races[race_id] -= 1
+			settlement.professions[profession_id] -= 1
+			
+			
 			
 class Entity:
 	def __init__(self):
@@ -816,7 +926,8 @@ class Character(Creature):
 				"name": skill_name,
 				"level": 1,
 				"xp": 0,
-				"max_xp": 200
+				"max_xp": 200,
+				"potential": 1,
 			}
 		
 		self.generate_dietary_profile(race_objs)
@@ -828,6 +939,9 @@ class Character(Creature):
 		self.middle_name = ""
 		self.last_name = ""
 		
+		self.full_name = f"{self.first_name} {self.middle_name} {self.last_name}"
+		
+	def set_full_name(self):
 		self.full_name = f"{self.first_name} {self.middle_name} {self.last_name}"
 		
 	def update_needs(self):
@@ -1097,26 +1211,28 @@ class Character(Creature):
 		
 	def gain_skill_xp(self, skill_id, modifier=1):
 		skill = self.skills[skill_id]
-		level = skill["level"]
-		
-		base_max_gain = max(1, 101 - level)
-		
-		max_gain = max(1, int((base_max_gain * modifier) + 0.5))
-		
+
+		potential = skill.get("potential", 1)
+
+		max_gain = max(
+			1,
+			min(potential, int((potential * modifier) + 0.5))
+		)
+
 		xp_gain = random.randint(1, max_gain)
-		
+
 		skill["xp"] += xp_gain
-		
+
 		while skill["xp"] >= skill["max_xp"]:
 			skill["xp"] -= skill["max_xp"]
-			
+
 			skill["level"] += 1
-			
+
 			skill["max_xp"] = (skill["level"] + 1) * 100
-			
+
 			if skill_id == "strength":
 				self.calc_max_encumbrance()
-				
+
 		return xp_gain
 		
 	def train_movement(self, moved=True, modifier=1):
@@ -1140,6 +1256,19 @@ class Player(Character):
 		super().__init__(ancestry, race_objs, skill_objs)
 		
 		self.char = '@'
+
+class NPC(Character):
+	def __init__(self, ancestry, race_objs, skills):
+		super().__init__(ancestry, race_objs, skills)
+		
+		self.char = "N"
+		self.char_color = "black"
+		
+		self.settlement = None
+		
+		self.profession_id = None
+		
+		self.actions = []
 
 #Map
 class Region:
@@ -1250,6 +1379,8 @@ class Settlement:
 		
 		self.dropped_items = {}
 		
+		self.npcs = None
+		
 	def run_production(self, game):
 		for profession in game.profession_objs.values():
 			profession.produce(self, game)
@@ -1356,6 +1487,8 @@ class TownMapGenerator:
 			building = Building(building_data, building_type, self.settlement)
 			
 			self.buildings.append(building)
+			
+		self.game.generate_settlement_npcs(self.settlement, self)
 		
 	def tile_color(self, x, y):
 		tile = self.map_array[y][x]
@@ -1577,6 +1710,8 @@ class Race:
 		self.dietary_profile = args[14]
 		
 		self.capital_buildings = args[15]
+		
+		self.character_name_systems = args[16]
 		
 	def get_name_system_id(self, name_system_type):
 		name_systems = getattr(self, f"{name_system_type}_name_systems")

@@ -23,5 +23,19 @@
 		"wine": {
 			"thirst": 25
 		}
+	},
+	"elf_dietaryprofile": {
+		"fruit": {
+			"hunger": 15
+		},
+		"animal_meat": {
+			"hunger": 25
+		},
+		"water": {
+			"thirst": 25
+		},
+		"wine": {
+			"thirst": 10
+		}
 	}
 }

@@ -202,6 +202,41 @@ class CharacterCreationScreen(Screen):
 			skill_objs=game.skills,
 		)
 		
+		#Skill Potential
+		for skill_id, var in self.skill_potential_vars.items():
+			player.skills[skill_id]["potential"] = int(var.get())
+		
+		#Name
+		player.first_name = self.fname_widget.var.get().strip()
+		player.middle_name = self.mname_widget.var.get().strip()
+		player.last_name = self.lname_widget.var.get().strip()
+		player.set_full_name()
+		
+		#Role
+		role_id = self.role_options[self.role_var.get()]
+		role = game.role_defs[role_id]
+
+		experience_name = self.experience_var.get()
+		starting_level = self.experience_options[experience_name]
+
+		player.role_id = role_id
+
+		for skill_id in role["skills"]:
+			skill = player.skills[skill_id]
+
+			skill["level"] = starting_level
+			skill["xp"] = 0
+			skill["max_xp"] = (starting_level + 1) * 100
+
+		for item_id, quantity in role["items"].items():
+			player.add_carried_object(
+				item_id,
+				game,
+				quantity,
+			)
+
+		player.calc_encumbrance(game)
+		
 		#Currency
 		currency_name = self.currency_var.get()
 		currency = self.currency_options[currency_name]
@@ -314,6 +349,8 @@ class PlayScreen(Screen):
 		root.bind("<Escape>", self.open_menu)
 		
 		root.bind("g", lambda e: commands.process_cmd(e, self, "pickup_item"))
+		
+		root.bind(".", lambda e: commands.process_cmd(e, self, "wait"))
 		
 	def update_screen(self):
 		game = self.game
@@ -934,6 +971,8 @@ class TileMap(Canvas):
 		
 		self.draw_dropped_items()
 		
+		self.draw_npcs()
+		
 		self.draw_player()
 		
 	def draw_tiles(self):
@@ -1190,6 +1229,40 @@ class TileMap(Canvas):
 			
 			self.dropped_items.append(item)
 			self.tag_raise(item)
+			
+	def draw_npcs(self):
+		self.delete("npc")
+
+		if not isinstance(self.generator, entities.TownMapGenerator):
+			return
+
+		settlement = self.generator.settlement
+
+		tile_width = self.winfo_width() / self.map_size
+		tile_height = self.winfo_height() / self.map_size
+
+		half = self.map_size // 2
+		px, py = self.get_player_coords()
+
+		font_size = max(1, int(min(tile_width, tile_height) * 0.5))
+
+		for npc in settlement.npcs or []:
+			screen_x = npc.lx - px + half
+			screen_y = npc.ly - py + half
+
+			if not (0 <= screen_x < self.map_size and 0 <= screen_y < self.map_size):
+				continue
+
+			cx = (screen_x + 0.5) * tile_width
+			cy = (screen_y + 0.5) * tile_height
+
+			self.create_text(
+				cx, cy,
+				text=npc.char,
+				fill=npc.char_color,
+				font=("TkDefaultFont", font_size, "bold"),
+				tags="npc"
+			)
 		
 	def move_left(self, event=None):
 		if self.player_x > 0:
