@@ -820,7 +820,7 @@ class Game:
 			npc.gy = settlement.gy
 			npc.lx = lx
 			npc.ly = ly
-			npc.lz = lz
+			npc.lz = 0
 
 			race = self.race_objs[race_id]
 			name_system_id = race.get_name_system_id("character")
