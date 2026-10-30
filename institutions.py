@@ -1,18 +1,10 @@
 import random
 
-from entities import Wallet
-
 class Bank:
-	def __init__(self, settlement=None, use_settlement_wallet=True):
+	def __init__(self, settlement=None):
 		self.settlement = settlement
 		
-		if settlement is not None and use_settlement_wallet:
-			self.wallet = settlement.wallet
-			
-		else:
-			self.wallet = Wallet()
-		
-		self.exchange_fee = random.randint(1, 10)
+		self.exchange_fee = random.randint(1, 50)
 		
 		self.minimum_checking_deposit = random.randint(1, 100)
 		
@@ -93,18 +85,6 @@ class Bank:
 		if net_quantity <= 0:
 			return False
 
-		if not character.wallet.has_coins(
-			source_coin_id,
-			quantity,
-		):
-			return False
-
-		if not self.wallet.has_coins(
-			target_coin_id,
-			net_quantity,
-		):
-			return False
-
 		removed = character.remove_carried_object(
 			source_coin_id,
 			game,
@@ -113,16 +93,6 @@ class Bank:
 
 		if not removed:
 			return False
-
-		self.wallet.add_coins(
-			source_coin_id,
-			quantity,
-		)
-
-		self.wallet.remove_coins(
-			target_coin_id,
-			net_quantity,
-		)
 
 		character.add_carried_object(
 			target_coin_id,
@@ -141,27 +111,26 @@ class Bank:
 	def open_checking_account(self, game, character, amount):
 		if self.has_checking_account(character):
 			return False
-			
-		if amount < self.minimum_checking_deposit:
+
+		if amount <= 0 or amount < self.minimum_checking_deposit:
 			return False
-			
+
 		currency = self.get_currency()
-		
+
 		if currency is None:
 			return False
-			
-		if not character.wallet.has_coins(currency, amount):
-			return False
-			
-		removed = character.remove_carried_object(currency, game, amount)
-		
+
+		removed = character.remove_carried_object(
+			currency,
+			game,
+			amount,
+		)
+
 		if not removed:
 			return False
-			
-		self.wallet.add_coins(currency, amount)
-		
+
 		self.checking_accounts[character] = amount
-		
+
 		return True
 		
 	def deposit_checking(self, game, character, amount):
@@ -176,12 +145,6 @@ class Bank:
 		if currency is None:
 			return False
 
-		if not character.wallet.has_coins(
-			currency,
-			amount,
-		):
-			return False
-
 		removed = character.remove_carried_object(
 			currency,
 			game,
@@ -190,11 +153,6 @@ class Bank:
 
 		if not removed:
 			return False
-
-		self.wallet.add_coins(
-			currency,
-			amount,
-		)
 
 		self.checking_accounts[character] += amount
 
@@ -213,20 +171,6 @@ class Bank:
 		currency = self.get_currency()
 
 		if currency is None:
-			return False
-
-		if not self.wallet.has_coins(
-			currency,
-			amount,
-		):
-			return False
-
-		removed = self.wallet.remove_coins(
-			currency,
-			amount,
-		)
-
-		if not removed:
 			return False
 
 		self.checking_accounts[character] -= amount
@@ -251,20 +195,6 @@ class Bank:
 			return False
 
 		if balance > 0:
-			if not self.wallet.has_coins(
-				currency,
-				balance,
-			):
-				return False
-
-			removed = self.wallet.remove_coins(
-				currency,
-				balance,
-			)
-
-			if not removed:
-				return False
-
 			character.add_carried_object(
 				currency,
 				game,

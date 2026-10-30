@@ -4,6 +4,7 @@ import random
 
 from screenwidgets import CustomNotebook, Tab
 from popups import Popup
+import ai
 
 #BankPopup
 class BankPopup(Popup):
@@ -462,19 +463,8 @@ class ExchangeCurrencyPopup(Popup):
 			self.ok_btn.config(state=DISABLED)
 			return
 
-		if not self.bank.wallet.has_coins(
-			self.target_coin_id,
-			net_quantity,
-		):
-			self.receive_var.set(
-				"Bank does not have enough currency."
-			)
-
-			self.ok_btn.config(state=DISABLED)
-			return
-
 		self.ok_btn.config(state=NORMAL)
-		
+
 		self.center()
 
 	def clear_quote(self):
@@ -568,11 +558,9 @@ class MinePopup(Popup):
 		)
 		
 	def has_pickaxe(self):
-		return any(
-			quantity > 0
-			and self.game.item_type_objs[item_id].type_id == "pickaxe"
-			for item_id, quantity in self.player.inventory.get_items()
-		)
+		return self.player.find_inventory_item(
+			self.game.pickaxe_objs
+		) is not None
 		
 	def mine(self):
 		if not self.has_pickaxe():
@@ -588,6 +576,8 @@ class MinePopup(Popup):
 
 		if not ore_ids:
 			return
+			
+		town_map = self.play_screen.tile_map.generator
 
 		for _ in range(hours):
 			start_hour = (
@@ -606,30 +596,16 @@ class MinePopup(Popup):
 					self.play_screen.update_screen()
 					self.play_screen.handle_player_death()
 					return
+					
+				ai.start_ai(self.game, town_map)
 
-			mineral = self.settlement.resources["mineral"]
-			mining_level = self.player.get_skill_lvl("mining")
-
-			mining_chance = min(
-				100,
-				(mineral + mining_level) / 2,
-			)
-
-			if random.uniform(0, 100) < mining_chance:
-				ore_id = random.choice(ore_ids)
-
-				self.player.add_carried_object(
-					ore_id,
-					self.game,
-					quantity=1,
-				)
-
-			self.player.gain_skill_xp("mining")
-
+			self.game.mine(self.player, self.settlement)
+			
 			if self.player.get_low_needs():
 				break
 
 		self.play_screen.update_screen()
+		self.play_screen.tile_map.update_map()
 		
 	def close(self):
 		self.play_screen.can_process_input = True
@@ -657,10 +633,8 @@ class TradePopup(Popup):
 		
 		self.currency_type = currency_type = settlement.currency
 		self.currency_name = currency_name = game.coin_objs[currency_type].name
-		self.settlement_currency_quantity = settlement_currency_quantity = settlement.wallet.get_quantity(currency_type)
 		
-		self.settlement_currency_var = StringVar(value=f"{building.get_name()} ({currency_name}: {settlement_currency_quantity})")	
-		ttk.Label(self, textvariable=self.settlement_currency_var, anchor="center").pack(fill=X)
+		ttk.Label(self, text=building.get_name(), anchor="center").pack(fill=X)
 		
 		self.player_currency_quantity = player_currency_quantity = player.wallet.get_quantity(currency_type)
 		
@@ -700,15 +674,12 @@ class TradePopup(Popup):
 		self.destroy()
 		
 	def update_popup(self):
-		settlement = self.settlement
 		player = self.player
 		currency_type = self.currency_type
 		currency_name = self.currency_name
 		
-		self.settlement_currency_quantity = settlement_currency_quantity = settlement.wallet.get_quantity(currency_type)
 		self.player_currency_quantity = player_currency_quantity = player.wallet.get_quantity(currency_type)
 		
-		self.settlement_currency_var.set(f"{self.building.get_name()} ({currency_name}: {settlement_currency_quantity})")
 		self.player_currency_var.set(f"You ({currency_name}: {player_currency_quantity})")
 		
 	def filter_items(self, event=None):

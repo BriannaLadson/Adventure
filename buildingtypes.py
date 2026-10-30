@@ -12,6 +12,8 @@ class BuildingType:
 		
 		self.settlement = None
 		
+		self.is_shop = False
+		
 class BankBuilding(BuildingType):
 	def __init__(self):
 		super().__init__()
@@ -39,6 +41,8 @@ class MarketBuilding(BuildingType):
 		self.size = (6, 10)
 		
 		self.popup_type = "trade"
+		
+		self.is_shop = True
 		
 class MineBuilding(BuildingType):
 	def __init__(self):

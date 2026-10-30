@@ -14,6 +14,10 @@ class Profession:
 		
 		self.skill = None
 		
+		self.starting_items = {}
+		
+		self.starting_skills = []
+		
 	def produce(self, settlement, game):
 		sub_economy = settlement.sub_economy
 		workers = settlement.get_active_workers(self)
@@ -56,6 +60,43 @@ class Profession:
 				for reagent_id, quantity in reagents.items():
 					if not sub_economy.has_item(reagent_id, quantity):
 						sub_economy.change_modifier(reagent_id, quantity)
+		
+	def give_starting_items(self, game, character):
+		for item_type_id, quantity in self.starting_items.items():
+			variants = [
+				item_id
+				for item_id, item in game.item_type_objs.items()
+				if getattr(item, "type_id", None) == item_type_id
+				and item_id != item_type_id
+			]
+
+			if variants:
+				item_id = random.choice(variants)
+
+			elif item_type_id in game.item_type_objs:
+				item_id = item_type_id
+
+			else:
+				continue
+
+			character.add_carried_object(
+				item_id,
+				game,
+				quantity=quantity,
+			)
+		
+	def add_work_ai(self, game, character, town_map):
+		pass
+		
+	def give_starting_skills(self, character):
+		for skill_id in self.starting_skills:
+			skill = character.skills[skill_id]
+
+			skill["level"] = random.randint(1, 100)
+			skill["xp"] = 0
+			skill["max_xp"] = (skill["level"] + 1) * 100
+
+		character.calc_max_encumbrance()	
 		
 class CustomProfession(Profession):
 	def __init__(self, *args):
@@ -248,6 +289,14 @@ class Miner(Profession):
 		
 		self.can_craft = False
 		
+		self.starting_items = {
+			"pickaxe": 1,
+		}
+		
+		self.starting_skills = [
+			"mining",
+		]
+		
 	def produce(self, settlement, game):
 		sub_economy = settlement.sub_economy
 		
@@ -261,6 +310,39 @@ class Miner(Profession):
 			ore = random.choice(list(game.ore_objs.keys()))
 			
 			sub_economy.add_item(ore, quantity=1)
+			
+	def add_work_ai(self, game, character, town_map):
+		ore_id = character.find_inventory_item(game.ore_objs)
+		
+		if ore_id is not None:
+			shops = town_map.get_buildings(is_shop=True)
+			
+			if shops:
+				shop = random.choice(shops)
+				
+				character.actions.extend([
+					("travel", shop),
+					("sell", (shop, ore_id)),
+				])
+				
+			return
+			
+		pickaxe_id = character.find_inventory_item(game.pickaxe_objs)
+		
+		if pickaxe_id is None or not game.ore_objs:
+			return
+			
+		mines = town_map.get_buildings(
+			building_type="mine_building",
+		)
+		
+		if mines:
+			mine_building = random.choice(mines)
+			
+			character.actions.extend([
+				("travel", mine_building),
+				("mine", None),
+			])
 			
 class Smelter(Profession):
 	def __init__(self):

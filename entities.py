@@ -3,8 +3,8 @@ import numpy as np
 from terraforge import TownForge
 from dyecon import Economy, SubEconomy
 import copy
-
 import time
+from collections import deque
 
 import helpfunctions as helpf
 import professions
@@ -13,6 +13,7 @@ import buildingtypes
 import items
 import inventory
 import crafting
+import traits
 
 class Game:
 	def __init__(self, save_path):
@@ -98,6 +99,8 @@ class Game:
 			"tanning": "Determines your chance of successfully processing hides into leather.",
 			"wood_burning": "Determines your chance of successfully producing coal."
 		}
+		
+		self.debug_npc = None
 		
 	def init_economy(self):
 		base_values = {}
@@ -435,10 +438,9 @@ class Game:
 			
 		if not buyer.remove_carried_object(currency, self, price):
 			return False
-			
-		settlement.wallet.add_coins(currency, price)
 		
 		sub_economy.remove_item(item_id, quantity)
+		
 		buyer.add_carried_object(item_id, self, quantity)
 		
 		return True
@@ -450,10 +452,6 @@ class Game:
 		price = settlement.sub_economy.get_value(item_id) * quantity
 		
 		if not seller.remove_carried_object(item_id, self, quantity):
-			return False
-			
-		if not settlement.wallet.remove_coins(currency, price):
-			seller.add_carried_object(item_id, self, quantity)
 			return False
 			
 		seller.add_carried_object(currency, self, price)
@@ -815,6 +813,10 @@ class Game:
 
 			npc.settlement = settlement
 			npc.profession_id = profession_id
+			npc.profession = self.profession_objs[profession_id]
+			npc.profession.give_starting_items(self, npc)
+			npc.profession.give_starting_skills(npc)
+			npc.randomize_skill_potentials()
 
 			npc.gx = settlement.gx
 			npc.gy = settlement.gy
@@ -848,7 +850,59 @@ class Game:
 			settlement.races[race_id] -= 1
 			settlement.professions[profession_id] -= 1
 			
-			
+	def mine(self, character, settlement):
+		pickaxe_id = character.find_inventory_item(self.pickaxe_objs)
+
+		if pickaxe_id is None or not self.ore_objs:
+			return False
+
+		mineral = settlement.region.resources["mineral"]
+		mining_level = character.get_skill_lvl("mining")
+
+		mining_chance = min(
+			100,
+			(mineral + mining_level) / 2,
+		)
+
+		success = random.uniform(0, 100) < mining_chance
+
+		if success:
+			ore_id = random.choice(list(self.ore_objs))
+
+			character.add_carried_object(
+				ore_id,
+				self,
+				quantity=1,
+			)
+
+		character.gain_skill_xp("mining")
+
+		return success
+		
+	def select_debug_npc(self, settlement, profession_id=None):
+		candidates = [
+			npc
+			for npc in settlement.npcs or []
+			if npc.alive
+			and (
+				profession_id is None
+				or npc.profession_id == profession_id
+			)
+		]
+
+		self.debug_npc = (
+			random.choice(candidates)
+			if candidates
+			else None
+		)
+
+		if self.debug_npc is not None:
+			print(
+				f"[DEBUG] Following: {self.debug_npc.full_name} "
+				f"({self.debug_npc.profession_id})"
+			)
+
+		return self.debug_npc
 			
 class Entity:
 	def __init__(self):
@@ -1251,6 +1305,17 @@ class Character(Creature):
 		
 		return self.dietary_profile.get_need_values(item_type)
 		
+	def find_inventory_item(self, item_ids):
+		for item_id, quantity in self.inventory.get_items():
+			if quantity > 0 and item_id in item_ids:
+				return item_id
+				
+		return None
+		
+	def randomize_skill_potentials(self):
+		for skill in self.skills.values():
+			skill["potential"] = random.randint(1, 100)
+		
 class Player(Character):
 	def __init__(self, ancestry, race_objs, skill_objs):
 		super().__init__(ancestry, race_objs, skill_objs)
@@ -1267,6 +1332,10 @@ class NPC(Character):
 		self.settlement = None
 		
 		self.profession_id = None
+		self.profession = None
+		self.work_shift = random.choice(traits.WORK_SHIFTS)
+		
+		self.current_activity = None
 		
 		self.actions = []
 
@@ -1559,6 +1628,88 @@ class TownMapGenerator:
 				return building
 				
 		return None
+		
+	def get_buildings(self, building_type=None, is_shop=None):
+		return [
+			building
+			for building in self.buildings
+			if (
+				building_type is None
+				or building.type == building_type
+			)
+			and (
+				is_shop is None
+				or building.building_type.is_shop == is_shop
+			)
+		]
+		
+	def get_building_positions(self, building):
+		x, y = building.door
+
+		if not (
+			0 <= x < self.map_size
+			and 0 <= y < self.map_size
+		):
+			return set()
+
+		if not self.is_walkable(x, y):
+			return set()
+
+		return {(x, y)}
+		
+	def find_path(self, start, goals, blocked=None):
+		goals = set(goals)
+		blocked = set() if blocked is None else set(blocked)
+
+		if start in goals:
+			return []
+
+		frontier = deque([start])
+		previous = {start: None}
+
+		while frontier:
+			x, y = frontier.popleft()
+			position = (x, y)
+
+			if position in goals:
+				path = []
+
+				while position != start:
+					path.append(position)
+					position = previous[position]
+
+				path.reverse()
+
+				return path
+
+			for dx, dy in (
+				(-1, 0),
+				(1, 0),
+				(0, -1),
+				(0, 1),
+			):
+				next_position = (x + dx, y + dy)
+				tx, ty = next_position
+
+				if not (
+					0 <= tx < self.map_size
+					and 0 <= ty < self.map_size
+				):
+					continue
+
+				if next_position in previous:
+					continue
+
+				if next_position in blocked:
+					continue
+
+				if not self.is_walkable(tx, ty):
+					continue
+
+				previous[next_position] = position
+				frontier.append(next_position)
+
+		return None	
 		
 #Factions
 class Civilization:

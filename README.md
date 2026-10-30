@@ -1,4 +1,4 @@
-# Adventure v0.20.1
+# Adventure v0.21.0
 
 Adventure is an open-world sandbox RPG simulation built using Python and Tkinter.
 
@@ -8,72 +8,87 @@ For more information on game systems, modding, and development, see the project 
 
 ## Current Features
 
+### World Generation & Exploration
+
 - Procedurally generated worlds, civilizations, settlements, and local maps
-- Persistent overworld regions with biome-specific environmental resources
-- Regional fauna, flora, minerals, trees, and water
-- Biome-specific fruit foraging
-- Multiple fruit and wine varieties
-- Automatically generated wine types and crafting reactions
-- Brewing and other resource-based professions
-- Dynamic economy with production chains, supply and demand, and settlement inventories
-- Data-driven crafting reactions and item types
-- Exploration, cartography, and location discovery
-- Character stats with skill XP, leveling, and progression
-- Strength and Speed skills that improve through movement
-- Strength-based maximum encumbrance
-- Speed-based overworld travel time
-- Over-encumbrance penalties that slow overworld movement
-- Inventory management, item transfer, item dropping, and item pickup
-- Item weight and character encumbrance system
-- Multi-currency wallet system with civilization-specific currencies
-- Trading with procedurally generated markets and dynamic pricing
-- Banks with settlement-based currency reserves
-- Currency exchange between civilization-specific currencies
-- Procedurally generated currency exchange fees
-- Checking accounts with procedurally generated minimum opening deposits
-- Checking account deposits, withdrawals, balances, and account closure
-- Data-driven architecture designed for expansion and modding
-- Tabbed character creation with Identity, Skill Potential, Items, and Start settings
-- Ratio-based character ancestry with support for mixed ancestry
-- Ancestry-based generation of need capacities, decay rates, and dietary compatibility
-- Dietary compatibility checks to ensure generated characters can satisfy their needs
-- Character sheet Identity tab displaying ancestry percentages
-- Mine buildings with pickaxe-required mining sessions lasting 1–24 hours
-- Mining success based on regional minerals and Mining skill
-- JSON-defined metals with automatically generated ores, bars, coins, and pickaxes
-- Blacksmith production of metal pickaxes
-- Market category filtering and scrollable Buy/Sell lists
-- Player crafting with skill filters and recipe tooltips
-- Skill-based crafting success, ingredient consumption, and crafting time
-- Player-created maps of discovered settlements with skill-based coordinate accuracy
-- JSON-defined starting roles with related skills and equipment
-- Selectable starting skill experience for character roles
-- Manual character naming and procedural name generation
+- Persistent regions with biome-specific fauna, flora, minerals, trees, and water
 - Human, Dwarf, and Elf civilizations with distinct profession distributions
+- Location discovery and cartography
+- Player-created maps with skill-based coordinate accuracy
+
+### Characters & Progression
+
+- Tabbed character creation with identity, ancestry, skill potential, starting items, and role selection
+- Manual and procedural character naming, with Human, Dwarf, and Elf naming systems
+- Mixed ancestry with ancestry-based needs and dietary compatibility
+- Skill XP, leveling, and configurable potential
+- Strength and Speed progression through movement
+- Strength-based carrying capacity and encumbrance-based movement penalties
+- JSON-defined starting roles with related skills and equipment
+
+### NPCs & AI
+
 - Persistent town NPCs generated from settlement demographics
-- Goal-based NPC AI with action queues for wandering and idling
-- Wait command (`.`) that advances one turn without moving
-- Configurable potential for each skill, determining maximum XP gained per action
+- Profession-based work planning with queued actions
+- First, second, and third work-shift traits
+- Miners that collect ore and sell it at randomly selected shops
+- Profession-defined starting equipment with randomized item variants
+- Randomized profession skill levels and individual skill potentials
+- Wandering and idling when no work is assigned
+- Town pathfinding around buildings and occupied tiles
+- Door-based building interactions, with NPCs hidden while inside
+- NPC AI updates during player mining sessions
+- Console debugging for following a selected NPC
 
-## What's New in v0.20.0
+### Economy & Banking
 
-- Added starting roles defined through JSON, including Peasant and skill-based professions.
-- Added starting experience options: Untrained, Beginner, Apprentice, Journeyman, and Master.
-- Added first, middle, and last name entries with individual random name generation buttons and a naming system selector.
-- Added Human, Dwarf, and Elf character naming systems.
-- Added Elves with their own civilizations, settlements, dietary profile, currency, and nature-focused profession distribution.
-- Added persistent NPCs to town maps, with generated names, ancestry, and professions.
-- Generating an NPC removes one corresponding worker from the settlement's background demographics.
-- Added an extensible NPC AI system with goals, queued actions, wandering, and idling.
-- NPCs avoid buildings, occupied NPC tiles, and the player's tile when moving.
-- Added the `.` key to wait one turn.
-- Added a Skill Potential tab to character creation, with values from 1–100 and a default of 1.
-- Added individual skill potential randomization buttons and presets for changing all potentials at once.
-- Skill potential now determines the maximum XP gained per action.
+- Dynamic pricing, supply and demand, production chains, and settlement inventories
+- Markets and banks with unlimited transaction funding, independent of town treasuries
+- Civilization-specific currencies and multi-currency wallets
+- Currency exchange with procedurally generated fees
+- Checking accounts with minimum opening deposits, deposits, withdrawals, and account closure
+- Market category filtering and scrollable Buy/Sell lists
+
+### Items, Crafting & Gathering
+
+- Inventory management, item transfers, dropping, and pickup
+- Item weight and character encumbrance
+- Data-driven item types and crafting reactions
+- Skill-based crafting with ingredient consumption, crafting time, and recipe tooltips
+- Biome-specific fruit foraging and multiple fruit and wine varieties
+- Automatically generated wine types and brewing reactions
+- JSON-defined metals with generated ores, bars, coins, and pickaxes
+- Blacksmith production of metal pickaxes
+- Pickaxe-required mining sessions lasting 1–24 hours
+- Shared player and NPC mining results based on regional minerals and Mining skill
+
+### Controls & Extensibility
+
+- Wait command (`.`) to advance one turn without moving
+- Data-driven systems designed for expansion and modding
+
+## What's New in v0.21.0
+
+- Added profession-based NPC work planning.
+- Added randomized work-shift traits: first shift (6 AM–2 PM), second shift (2 PM–10 PM), and third shift (10 PM–6 AM).
+- Added miner work AI: miners check for a pickaxe, travel to a local mine, mine until they obtain one ore, and travel to a randomly selected shop to sell it.
+- NPC work queues are cancelled when their shift ends, with wandering and idling as fallback behaviors.
+- Added profession-defined starting equipment, with random selection of specific item variants.
+- Added randomized starting levels from 1–100 for configured profession skills.
+- Added independently randomized potential from 1–100 for every NPC skill.
+- Added reusable town pathfinding and building lookup methods.
+- NPCs now travel to building doors and disappear from view while occupying them.
+- Multiple NPCs can occupy building doors to represent being inside.
+- Shared player and NPC mining result logic, using regional minerals and character Mining skill.
+- NPC AI now continues running during player mining sessions.
+- Markets and banks no longer use town treasury reserves to fund transactions.
+- Bank exchange fees now range from 1–50%.
+- Fixed pickaxe detection when carrying generated map items.
+- Added console debugging for following a selected NPC's actions, inventory, and currency.
 
 ### Save Compatibility
 
-Start a new save for v0.20.0 to include roles, Elves, character naming systems, NPCs, and skill potential. Existing saves are not migrated to the new systems.
+Start a new save for v0.21.0. Existing saves are not migrated to the new NPC work, starting equipment, skill initialization, and banking structures.
 
 ## Screenshots
 
@@ -83,10 +98,7 @@ Start a new save for v0.20.0 to include roles, Elves, character naming systems, 
 
 ### Character Creation
 
-<img width="1366" height="768" alt="Screenshot (908)" src="https://github.com/user-attachments/assets/041eabe9-ec1d-474d-8a04-4d06b1d0bcb1" />
-
-<img width="1366" height="768" alt="Screenshot (909)" src="https://github.com/user-attachments/assets/5666eb76-a3a2-49ae-8da1-741323332a96" />
-
+<img width="1366" height="768" alt="Screenshot (713)" src="https://github.com/user-attachments/assets/e753174e-20fc-4849-933f-6156b434bed9" />
 
 ### World Generation
 
@@ -96,20 +108,27 @@ Start a new save for v0.20.0 to include roles, Elves, character naming systems, 
 
 <img width="1366" height="768" alt="Screenshot (690)" src="https://github.com/user-attachments/assets/7e314f0c-3440-407d-8644-1ee6d94698ab" />
 
-### Towns
+### Location Buildings
 
-<img width="1366" height="768" alt="Screenshot (912)" src="https://github.com/user-attachments/assets/e4001999-03ee-4dda-813f-7f6e36a2be4e" />
-
+<img width="1366" height="768" alt="Screenshot (691)" src="https://github.com/user-attachments/assets/148166e2-c76e-4631-942d-9dada324dd4d" />
 
 ### Economy
 
-<img width="1366" height="768" alt="Screenshot (913)" src="https://github.com/user-attachments/assets/f7056559-6e0a-4eb3-937a-cbc1c99e00b1" />
-
+<img width="1366" height="768" alt="Screenshot (714)" src="https://github.com/user-attachments/assets/4c972c49-b8ca-4b93-9816-05a27b68ebf6" />
 
 ### Character Sheet
 
-<img width="1366" height="768" alt="Screenshot (910)" src="https://github.com/user-attachments/assets/ccb38f7d-39f1-4f78-8da8-e5937c3dbeda" />
+<img width="1366" height="768" alt="Screenshot (715)" src="https://github.com/user-attachments/assets/03423746-b47a-4cc5-8893-513d8012aa05" />
 
+<img width="1366" height="768" alt="Screenshot (716)" src="https://github.com/user-attachments/assets/3395247a-e779-4051-a745-dffce677f822" />
+
+<img width="1366" height="768" alt="Screenshot (717)" src="https://github.com/user-attachments/assets/561f04c5-521d-4174-a6b0-4d680e0011b8" />
+
+<img width="1366" height="768" alt="Screenshot (719)" src="https://github.com/user-attachments/assets/1b5e9ecb-90e7-4388-9a9c-bc42dd095e5b" />
+
+<img width="1366" height="768" alt="Screenshot (720)" src="https://github.com/user-attachments/assets/23851090-11d5-4040-aef1-05a27b68ebf6" />
+
+<img width="1366" height="768" alt="Screenshot (721)" src="https://github.com/user-attachments/assets/6507447d-b5b7-4b68-84e5-f2aeaf00fa9c" />
 
 ## Installation
 

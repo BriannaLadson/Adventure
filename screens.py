@@ -1247,6 +1247,9 @@ class TileMap(Canvas):
 		font_size = max(1, int(min(tile_width, tile_height) * 0.5))
 
 		for npc in settlement.npcs or []:
+			if self.generator.get_building_by_door(npc.lx, npc.ly) is not None:
+				continue
+			
 			screen_x = npc.lx - px + half
 			screen_y = npc.ly - py + half
 
