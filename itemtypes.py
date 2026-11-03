@@ -11,6 +11,7 @@ class ItemType:
 		properties = None,
 		can_forage = False,
 		type_id=None,
+		max_durability=100,
 	):
 		self.id = id
 		
@@ -35,6 +36,11 @@ class ItemType:
 		self.can_forage = can_forage
 		
 		self.creator = None
+		
+		self.max_durability = max_durability
+		self.durability = max_durability
+		
+		self.is_unique = False
 		
 class WineType(ItemType):
 	VALUE_MULTIPLIER = 2
@@ -124,55 +130,57 @@ class OreType(ItemType):
 		
 		self.material = metal_id
 		
-class AnimalCorpse(ItemType):
-	def __init__(self):
+class AnimalCorpseType(ItemType):
+	def __init__(self, animal_id="animal", animal_name="Animal"):
 		super().__init__(
-			categories = ["Animal Product"]
+			id=f"{animal_id}_corpse",
+			name=f"{animal_name} Corpse",
+			type_id="animal_corpse",
+			base_value=2,
+			weight=20,
+			categories=["Animal Product"],
 		)
-		
-		self.id = "animal_corpse"
-		
-		self.name = "Animal Corpse"
-		
-		self.base_value = 2
-		
-		self.weight = 20
-		
-class AnimalHide(ItemType):
-	def __init__(self):
+
+
+class AnimalHideType(ItemType):
+	def __init__(self, animal_id="animal", animal_name="Animal"):
 		super().__init__(
-			categories = ["Animal Product"]
+			id=f"{animal_id}_hide",
+			name=f"{animal_name} Hide",
+			type_id="animal_hide",
+			base_value=2,
+			weight=5,
+			categories=["Animal Product"],
 		)
-		
-		self.id = "animal_hide"
-		
-		self.name = "Animal Hide"
-		
-		self.reagents = {
-			"animal_corpse": 1,
-		}
-		
-		self.base_value = 2
-		
-		self.weight = 5
-		
-class AnimalLeather(ItemType):
-	def __init__(self):
+
+		self.reagents = {f"{animal_id}_corpse": 1}
+
+
+class AnimalMeatType(ItemType):
+	def __init__(self, animal_id="animal", animal_name="Animal"):
 		super().__init__(
-			categories = ["Animal Product"]
+			id=f"{animal_id}_meat",
+			name=f"{animal_name} Meat",
+			type_id="animal_meat",
+			base_value=3,
+			weight=5,
+			categories=["Food", "Animal Product", "Meat"],
+			actions=["consume", "drop"],
 		)
-		
-		self.id = "animal_leather"
-		
-		self.name = "Animal Leather"
-		
-		self.reagents = {
-			"animal_hide": 1,
-		}
-		
-		self.base_value = 4
-		
-		self.weight = 3
+
+
+class AnimalLeatherType(ItemType):
+	def __init__(self, animal_id="animal", animal_name="Animal"):
+		super().__init__(
+			id=f"{animal_id}_leather",
+			name=f"{animal_name} Leather",
+			type_id="animal_leather",
+			base_value=4,
+			weight=3,
+			categories=["Animal Product"],
+		)
+
+		self.reagents = {f"{animal_id}_hide": 1}
 		
 class Coal(ItemType):
 	def __init__(self):
@@ -208,25 +216,6 @@ class Ink(ItemType):
 		}
 		
 		self.base_value = 4
-		
-class AnimalMeat(ItemType):
-	def __init__(self):
-		super().__init__(
-			categories = ["Food", "Animal Product", "Meat"]
-		)
-		
-		self.id = "animal_meat"
-		
-		self.name = "Animal Meat"
-		
-		self.base_value = 3
-		
-		self.actions = [
-			"consume",
-			"drop",
-		]
-		
-		self.weight = 5
 		
 class Parchment(ItemType):
 	def __init__(self):
@@ -298,17 +287,31 @@ class Wood(ItemType):
 		self.weight = 5
 		
 class Pickaxe(ItemType):
+	BASE_DURABILITY = 100
+
 	def __init__(self, metal_id, metal):
-		super().__init__(
-			id = f"{metal_id}_pickaxe",
-			name = f"{metal['name']} Pickaxe",
-			type_id = "pickaxe",
-			base_value = metal["base_value"] * 2,
-			weight=5,
-			categories = ["Tool"],
+		durability_modifier = metal.get(
+			"durability_modifier",
+			1.0,
 		)
-		
+
+		max_durability = max(
+			1,
+			round(self.BASE_DURABILITY * durability_modifier),
+		)
+
+		super().__init__(
+			id=f"{metal_id}_pickaxe",
+			name=f"{metal['name']} Pickaxe",
+			type_id="pickaxe",
+			base_value=metal["base_value"] * 2,
+			weight=5,
+			categories=["Tool"],
+			max_durability=max_durability,
+		)
+
 		self.material = metal_id
+
 		self.reagents = {
 			f"{metal_id}_bar": 1,
 			"coal": 1,
@@ -316,10 +319,10 @@ class Pickaxe(ItemType):
 		}
 		
 ITEM_TYPES = {
-	"animal_corpse": AnimalCorpse(),
-	"animal_hide": AnimalHide(),
-	"animal_leather": AnimalLeather(),
-	"animal_meat": AnimalMeat(),
+	"animal_corpse": AnimalCorpseType(),
+	"animal_hide": AnimalHideType(),
+	"animal_leather": AnimalLeatherType(),
+	"animal_meat": AnimalMeatType(),
 	"coal": Coal(),
 	"ink": Ink(),
 	"parchment": Parchment(),

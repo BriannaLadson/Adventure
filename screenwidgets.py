@@ -4,6 +4,7 @@ from tktooltip import ToolTip
 import random
 
 import helpfunctions as helpf
+import traits
 
 #Custom Notebooks
 class CustomNotebook(ttk.Notebook):
@@ -288,6 +289,36 @@ class CharacterCreationIdentityTab(Tab):
 		race_cbx.pack()
 		
 		ttk.Separator(scr_fr, orient="horizontal").pack(fill=X)
+		
+		#Handedness
+		handedness_fr = ttk.Frame(scr_fr)
+		handedness_fr.pack(pady=5)
+
+		ttk.Label(
+			handedness_fr,
+			text="Handedness",
+		).pack()
+
+		screen.handedness_options = {
+			trait.name: trait
+			for trait in traits.HANDEDNESS_TRAITS
+		}
+
+		screen.handedness_var = StringVar(
+			value="Right-Handed"
+		)
+
+		ttk.Combobox(
+			handedness_fr,
+			textvariable=screen.handedness_var,
+			values=list(screen.handedness_options),
+			state="readonly",
+		).pack()
+
+		ttk.Separator(
+			scr_fr,
+			orient="horizontal",
+		).pack(fill=X)
 		
 		#Role
 		role_fr = ttk.Frame(scr_fr)
@@ -592,6 +623,28 @@ class CharacterSheetIdentityTab(Tab):
 			ttk.Label(row_fr, text=race.name, anchor="center").pack(side=LEFT)
 			
 			ttk.Label(row_fr, text=f"{percentage}%", anchor="center").pack(side=LEFT)
+		ttk.Separator(
+			scr_fr,
+			orient="horizontal",
+		).pack(fill=X)
+			
+		#Handedness
+		ttk.Label(
+			scr_fr,
+			text="Handedness",
+			anchor="center",
+		).pack(fill=X)
+
+		ttk.Label(
+			scr_fr,
+			text=self.player.handedness.name,
+			anchor="center",
+		).pack()
+
+		ttk.Separator(
+			scr_fr,
+			orient="horizontal",
+		).pack(fill=X)
 		
 class CraftingTab(Tab):
 	def __init__(self, parent, game):

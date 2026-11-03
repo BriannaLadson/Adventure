@@ -211,6 +211,25 @@ class ItemPopup(Popup):
 					text=f"{need_id.capitalize()}: {sign}{amount}",
 					anchor="center"
 				).pack(fill=X)
+				
+		#Equipment
+		if self.source == "inventory":
+			self.equipment_frame = ttk.LabelFrame(
+				self,
+				text="Held Equipment",
+			)
+			self.equipment_frame.pack(fill=X, pady=5)
+
+			self.equipment_status = StringVar()
+
+			self.refresh_equipment()
+
+			ttk.Label(
+				self,
+				textvariable=self.equipment_status,
+				wraplength=300,
+				anchor="center",
+			).pack(fill=X)
 			
 		self.action_funcs = {
 			"consume": self.consume_item,
@@ -311,6 +330,145 @@ class ItemPopup(Popup):
 		self.quantity_lbl.config(
 			text=f"Quantity: {self.quantity}"
 		)
+		
+	def refresh_equipment(self):
+		frame = self.equipment_frame
+		player = self.game.player
+
+		for widget in frame.winfo_children():
+			widget.destroy()
+
+		durability = getattr(self.item, "durability", None)
+		max_durability = getattr(self.item, "max_durability", None)
+
+		if durability is not None and max_durability is not None:
+			ttk.Label(
+				frame,
+				text=f"Durability: {durability}/{max_durability}",
+			).pack(fill=X)
+
+		#Show the hands holding copies of this item.
+		for part_id, part in player.body_parts.items():
+			if part.get("equipped_item_id") != self.item_id:
+				continue
+
+			row = ttk.Frame(frame)
+			row.pack(fill=X, pady=2)
+
+			ttk.Label(
+				row,
+				text=f"Held in: {part['name']}",
+			).pack(side=LEFT)
+
+			ttk.Button(
+				row,
+				text="Unequip",
+				command=lambda part_id=part_id: self.unequip_item(
+					part_id
+				),
+			).pack(side=RIGHT)
+
+		available = player.get_unequipped_quantity(self.item_id)
+
+		ttk.Label(
+			frame,
+			text=f"Unequipped copies: {available}",
+		).pack(fill=X)
+
+		self.hand_options = {
+			f"{part['name']} ({part_id})": part_id
+			for part_id, part in player.body_parts.items()
+			if part.get("hand_skill") in player.skills
+			and part.get("equipped_item_id") is None
+		}
+
+		if not self.hand_options:
+			ttk.Label(
+				frame,
+				text="No free hands.",
+			).pack(fill=X)
+			return
+
+		if available < 1:
+			return
+
+		if durability is not None and durability <= 0:
+			ttk.Label(
+				frame,
+				text="This item is broken.",
+			).pack(fill=X)
+			return
+
+		ttk.Button(
+			frame,
+			text="Auto-equip",
+			command=self.auto_equip_item,
+		).pack(fill=X, pady=2)
+
+		self.hand_var = StringVar(
+			value=next(iter(self.hand_options))
+		)
+
+		ttk.Combobox(
+			frame,
+			textvariable=self.hand_var,
+			values=list(self.hand_options),
+			state="readonly",
+		).pack(fill=X)
+
+		ttk.Button(
+			frame,
+			text="Equip",
+			command=self.equip_item,
+		).pack(fill=X, pady=2)
+
+	def auto_equip_item(self):
+		success = self.game.player.auto_equip(self.item_id)
+
+		self.finish_equipment_change(
+			success,
+			"Item equipped automatically.",
+		)
+
+	def equip_item(self):
+		part_id = self.hand_options.get(self.hand_var.get())
+
+		if part_id is None:
+			return
+
+		success = self.game.player.equip(
+			self.item_id,
+			part_id,
+		)
+
+		self.finish_equipment_change(
+			success,
+			"Item equipped.",
+		)
+
+	def unequip_item(self, part_id):
+		success = self.game.player.unequip(part_id)
+
+		self.finish_equipment_change(
+			success,
+			"Item unequipped.",
+		)
+
+	def finish_equipment_change(self, success, message):
+		self.refresh_equipment()
+
+		if success:
+			self.equipment_status.set(message)
+
+			if self.parent_tab is not None:
+				self.parent_tab.populate()
+
+		else:
+			self.equipment_status.set(
+				"Unable to change equipment."
+			)
+
+		self.center()
 			
 class DeathPopup(Popup):
 	def __init__(self, root):

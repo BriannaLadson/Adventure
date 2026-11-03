@@ -1,22 +1,27 @@
 {
 	"gold": {
 		"name": "Gold",
-		"base_value": 10
+		"base_value": 10,
+		"durability_modifier": 0.4
 	},
 	"platinum": {
 		"name": "Platinum",
-		"base_value": 20
+		"base_value": 20,
+		"durability_modifier": 1.2
 	},
 	"silver": {
 		"name": "Silver",
-		"base_value": 8
+		"base_value": 8,
+		"durability_modifier": 0.6
 	},
 	"copper": {
 		"name": "Copper",
-		"base_value": 2
+		"base_value": 2,
+		"durability_modifier": 0.8
 	},
 	"iron": {
 		"name": "Iron",
-		"base_value": 4
+		"base_value": 4,
+		"durability_modifier": 1.0
 	}
 }

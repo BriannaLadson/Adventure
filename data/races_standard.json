@@ -61,14 +61,14 @@
 			"tree_cutter": [0, 100],
 			"paper_maker": [0, 100],
 			"wood_burner": [0, 100],
-			"cartographer": [0, 5],
+			"cartographer": [0, 100],
 			"miner": [0, 100],
 			"smelter": [0, 100],
 			"coinsmith": [0, 100],
 			"water_collector":[0, 100],
 			"forager": [0, 100],
-			"brewer": [0, 30],
-			"blacksmith": [0, 10]
+			"brewer": [0, 100],
+			"blacksmith": [0, 100]
 		},
 		"currency": "gold_coin",
 		"settlement_currency": [0, 1000],
@@ -85,7 +85,8 @@
 		"dietary_profile": "human_dietaryprofile",
 		"character_name_systems": [
 			"human_names"
-		]
+		],
+		"body_template": "humanoid_body"
 	},
 	"dwarf": {
 		"name": "Dwarf",
@@ -142,21 +143,21 @@
 			}
 		},
 		"settlement_professions": {
-			"hunter": [0, 50],
-			"butcher": [0, 50],
-			"ink_maker": [0, 50],
-			"tanner": [0, 50],
-			"tree_cutter": [0, 50],
-			"paper_maker": [0, 50],
-			"wood_burner": [0, 50],
-			"cartographer": [0, 2],
-			"miner": [50, 100],
-			"smelter": [50, 100],
-			"coinsmith": [50, 100],
-			"water_collector":[0, 50],
-			"forager": [0, 50],
-			"brewer": [20, 60],
-			"blacksmith": [5, 25]
+			"hunter": [0, 100],
+			"butcher": [0, 100],
+			"ink_maker": [0, 100],
+			"tanner": [0, 100],
+			"tree_cutter": [0, 200],
+			"paper_maker": [0, 100],
+			"wood_burner": [0, 200],
+			"cartographer": [0, 100],
+			"miner": [0, 200],
+			"smelter": [0, 200],
+			"coinsmith": [0, 200],
+			"water_collector":[0, 100],
+			"forager": [0, 100],
+			"brewer": [0, 200],
+			"blacksmith": [0, 200]
 		},
 		"currency": "platinum_coin",
 		"settlement_currency": [0, 1000],
@@ -173,7 +174,8 @@
 		"dietary_profile": "dwarf_dietaryprofile",
 		"character_name_systems": [
 			"dwarf_names"
-		]
+		],
+		"body_template": "humanoid_body"
 	},
 	"elf": {
 		"name": "Elf",
@@ -228,21 +230,21 @@
 			}
 		},
 		"settlement_professions": {
-			"hunter": [50, 100],
-			"butcher": [30, 80],
-			"ink_maker": [0, 50],
-			"tanner": [30, 80],
-			"tree_cutter": [50, 100],
-			"paper_maker": [20, 60],
-			"wood_burner": [20, 60],
-			"cartographer": [0, 5],
-			"miner": [0, 30],
-			"smelter": [0, 30],
-			"coinsmith": [0, 50],
-			"water_collector": [50, 100],
-			"forager": [50, 100],
-			"brewer": [20, 60],
-			"blacksmith": [0, 10]
+			"hunter": [0, 200],
+			"butcher": [0, 100],
+			"ink_maker": [0, 100],
+			"tanner": [0, 100],
+			"tree_cutter": [0, 100],
+			"paper_maker": [0, 100],
+			"wood_burner": [0, 100],
+			"cartographer": [0, 100],
+			"miner": [0, 100],
+			"smelter": [0, 100],
+			"coinsmith": [0, 100],
+			"water_collector": [0, 200],
+			"forager": [0, 200],
+			"brewer": [0, 100],
+			"blacksmith": [0, 100]
 		},
 		"currency": "silver_coin",
 		"settlement_currency": [0, 1000],
@@ -259,6 +261,7 @@
 		"dietary_profile": "elf_dietaryprofile",
 		"character_name_systems": [
 			"elf_names"
-		]
+		],
+		"body_template": "humanoid_body"
 	}
 }

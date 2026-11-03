@@ -1,0 +1,12 @@
+{
+	"humanoid_body": {
+		"left_hand": {
+			"name": "Left Hand",
+			"hand_skill": "left_hand"
+		},
+		"right_hand": {
+			"name": "Right Hand",
+			"hand_skill": "right_hand"
+		}
+	}
+}

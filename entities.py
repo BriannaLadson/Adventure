@@ -5,6 +5,8 @@ from dyecon import Economy, SubEconomy
 import copy
 import time
 from collections import deque
+import uuid
+from copy import deepcopy
 
 import helpfunctions as helpf
 import professions
@@ -46,6 +48,8 @@ class Game:
 		self.crafting_reaction_objs = {}
 		self.wine_reaction_objs = {}
 		
+		self.animals = {}
+		
 		self.fruit_objs = {}
 		
 		self.metals = {}
@@ -57,6 +61,7 @@ class Game:
 		self.coin_objs = {}
 		
 		self.pickaxe_objs = {}
+
 		
 		self.profession_objs = professions.PROFESSIONS
 		
@@ -72,14 +77,18 @@ class Game:
 			"butchering": "Butchering",
 			"cartography": "Cartography",
 			"coinsmithing": "Coinsmithing",
+			"hunting": "Hunting",
 			"ink_making": "Ink Making",
+			"left_hand": "Left Hand",
 			"mining": "Mining",
 			"paper_making": "Paper Making",
+			"right_hand": "Right Hand",
 			"smelting": "Smelting",
 			"strength": "Strength",
 			"speed": "Speed",
 			"tanning": "Tanning",
 			"wood_burning": "Wood Burning",
+			"wood_cutting": "Wood Cutting",
 		}
 		
 		self.max_npcs = 25
@@ -90,6 +99,7 @@ class Game:
 			"butchering": "Determines your chance of successfully processing animal corpses.",
 			"cartography": "Determines how accurately you record location information on maps.",
 			"coinsmithing": "Determines your chance of successfully crafting coins.",
+			"hunting": "Improves your chance of successfully hunting animals.",
 			"ink_making": "Determines your chance of successfully making ink.",
 			"mining": "Improves your chance of collecting ore while mining.",
 			"paper_making": "Determines your chance of successfully making parchment.",
@@ -97,10 +107,19 @@ class Game:
 			"speed": "Reduces the time required to travel across the overworld.",
 			"strength": "Increases the weight you can carry.",
 			"tanning": "Determines your chance of successfully processing hides into leather.",
-			"wood_burning": "Determines your chance of successfully producing coal."
+			"wood_burning": "Determines your chance of successfully producing coal.",
+			"wood_cutting": "Improves your chances of successfully cutting trees for wood.",
 		}
 		
 		self.debug_npc = None
+		self.debug_enabled = False
+		self.debug_profession_id = "brewer"
+		self.debug_npc = None
+
+		self.debug_action_limit = 5
+		self.debug_history = deque(maxlen=self.debug_action_limit)
+		
+		self.body_templates = {}
 		
 	def init_economy(self):
 		base_values = {}
@@ -565,6 +584,8 @@ class Game:
 		
 		self.generate_material_reactions()
 		
+		self.generate_animal_items_and_reactions()
+		
 	def resolve_race_references(self):
 		for race in self.race_objs.values():
 			dietary_profile_id = race.dietary_profile
@@ -588,6 +609,41 @@ class Game:
 			
 			self.wine_objs[wine.id] = wine
 			self.item_type_objs[wine.id] = wine
+			
+	def generate_animal_items_and_reactions(self):
+		for animal_id, animal in self.animals.items():
+			animal_name = animal["name"]
+			corpse = itemtypes.AnimalCorpseType(animal_id, animal_name)
+			hide = itemtypes.AnimalHideType(animal_id, animal_name)
+			meat = itemtypes.AnimalMeatType(animal_id, animal_name)
+			leather = itemtypes.AnimalLeatherType(animal_id, animal_name)
+
+			for item in (corpse, hide, meat, leather):
+				self.item_type_objs[item.id] = item
+
+			butchering = crafting.CraftingReaction(
+				id=f"butcher_{corpse.id}",
+				name=f"Butcher {corpse.name}",
+				reagents=hide.reagents.copy(),
+				products={
+					hide.id: animal["hide_quantity"],
+					meat.id: animal["meat_quantity"],
+				},
+				skill="butchering",
+				ticks=60,
+			)
+
+			tanning = crafting.CraftingReaction(
+				id=f"make_{leather.id}",
+				name=f"Make {leather.name}",
+				reagents=leather.reagents.copy(),
+				products={leather.id: 1},
+				skill="tanning",
+				ticks=60,
+			)
+
+			self.crafting_reaction_objs[butchering.id] = butchering
+			self.crafting_reaction_objs[tanning.id] = tanning
 			
 	def generate_wine_reactions(self):
 		for fruit_id, fruit in self.fruit_objs.items():
@@ -690,11 +746,35 @@ class Game:
 			
 	def assign_crafting_reactions(self):
 		self.assign_brewer_reactions()
+		
+		self.assign_butcher_reactions()
+		
+		self.assign_tanner_reactions()
 			
 	def assign_brewer_reactions(self):
 		brewer = self.profession_objs["brewer"]
 		
 		brewer.crafting_reactions = list(self.wine_reaction_objs.values())
+		
+	def assign_butcher_reactions(self):
+		butcher = self.profession_objs["butcher"]
+		butcher.crafting_reactions = [
+			self.crafting_reaction_objs["butcher_animal_corpse"],
+		]
+		butcher.crafting_reactions.extend(
+			self.crafting_reaction_objs[f"butcher_{animal_id}_corpse"]
+			for animal_id in self.animals
+		)
+		
+	def assign_tanner_reactions(self):
+		tanner = self.profession_objs["tanner"]
+		tanner.crafting_reactions = [
+			self.crafting_reaction_objs["make_animal_leather"],
+		]
+		tanner.crafting_reactions.extend(
+			self.crafting_reaction_objs[f"make_{animal_id}_leather"]
+			for animal_id in self.animals
+		)
 		
 	def get_region(self, gx, gy):
 		coordinates = (gx, gy)
@@ -810,12 +890,21 @@ class Game:
 			)[0]
 
 			npc = NPC({race_id: 1}, self.race_objs, self.skills)
+			
+			npc.generate_body_from_ancestry(self.race_objs, self.body_templates)
 
 			npc.settlement = settlement
+			
 			npc.profession_id = profession_id
 			npc.profession = self.profession_objs[profession_id]
-			npc.profession.give_starting_items(self, npc)
+			
 			npc.profession.give_starting_skills(npc)
+			npc.profession.give_starting_reactions(self, npc)
+			npc.profession.give_starting_items(self, npc)
+
+			
+			self.give_npc_starting_locations(npc, settlement)
+			
 			npc.randomize_skill_potentials()
 
 			npc.gx = settlement.gx
@@ -851,18 +940,35 @@ class Game:
 			settlement.professions[profession_id] -= 1
 			
 	def mine(self, character, settlement):
-		pickaxe_id = character.find_inventory_item(self.pickaxe_objs)
-
-		if pickaxe_id is None or not self.ore_objs:
+		if not self.ore_objs:
 			return False
+
+		equipped = character.ensure_equipped(
+			self,
+			self.pickaxe_objs,
+		)
+
+		if equipped is None:
+			return False
+
+		part_id, pickaxe_id = equipped
+
+		hand_skill = character.body_parts[part_id]["hand_skill"]
+		hand_level = character.get_skill_lvl(hand_skill)
 
 		mineral = settlement.region.resources["mineral"]
 		mining_level = character.get_skill_lvl("mining")
 
-		mining_chance = min(
+		base_chance = min(
 			100,
 			(mineral + mining_level) / 2,
 		)
+
+		hand_modifier = 0.5 + (
+			min(100, max(1, hand_level)) / 200
+		)
+
+		mining_chance = base_chance * hand_modifier
 
 		success = random.uniform(0, 100) < mining_chance
 
@@ -876,10 +982,19 @@ class Game:
 			)
 
 		character.gain_skill_xp("mining")
+		character.gain_skill_xp(hand_skill)
+
+		self.wear_equipped_item(
+			character,
+			part_id,
+			amount=1,
+		)
 
 		return success
 		
 	def select_debug_npc(self, settlement, profession_id=None):
+		self.debug_history.clear()
+		
 		candidates = [
 			npc
 			for npc in settlement.npcs or []
@@ -903,7 +1018,142 @@ class Game:
 			)
 
 		return self.debug_npc
-			
+		
+	def individualize_equipped_item(self, character, body_part_id):
+		part = character.body_parts.get(body_part_id)
+
+		if part is None:
+			return None
+
+		item_id = part.get("equipped_item_id")
+
+		if item_id is None:
+			return None
+
+		if character.inventory.get_quantity(item_id) < 1:
+			return None
+
+		item = self.item_type_objs[item_id]
+
+		if getattr(item, "is_unique", False):
+			return item_id
+
+		individual_item = copy.deepcopy(item)
+
+		individual_item.id = f"item_{uuid.uuid4().hex}"
+		individual_item.source_item_id = item_id
+		individual_item.is_unique = True
+
+		unique_id = individual_item.id
+
+		self.item_type_objs[unique_id] = individual_item
+
+		self.economy.set_base_value(
+			unique_id,
+			individual_item.base_value,
+		)
+
+		character.inventory.remove_item(item_id, 1)
+		character.inventory.add_item(unique_id, 1)
+
+		part["equipped_item_id"] = unique_id
+
+		character.calc_encumbrance(self)
+
+		return unique_id
+		
+	def item_matches(self, item_id, item_ids):
+		if item_id in item_ids:
+			return True
+
+		item = self.item_type_objs.get(item_id)
+
+		if item is None:
+			return False
+
+		source_item_id = getattr(item, "source_item_id", None)
+
+		return source_item_id is not None and source_item_id in item_ids
+		
+	def wear_equipped_item(self, character, body_part_id, amount=1):
+		if amount <= 0:
+			return None
+
+		item_id = self.individualize_equipped_item(
+			character,
+			body_part_id,
+		)
+
+		if item_id is None:
+			return None
+
+		item = self.item_type_objs[item_id]
+
+		item.durability = max(
+			0,
+			item.durability - amount,
+		)
+
+		if item.durability == 0:
+			for part in character.body_parts.values():
+				if part.get("equipped_item_id") == item_id:
+					part["equipped_item_id"] = None
+
+			character.inventory.remove_item(item_id, 1)
+			character.calc_encumbrance(self)
+
+		return item.durability
+		
+	def give_npc_starting_locations(self, npc, settlement):
+		known_locations = npc.memory.known_locations
+
+		starting_coordinates = (settlement.gx, settlement.gy)
+		known_locations[starting_coordinates] = settlement
+
+		if npc.profession_id != "cartographer":
+			return
+
+		locations = {
+			(location.gx, location.gy): location
+			for row in self.location_map
+			for location in row
+			if location is not None
+		}
+
+		locations[starting_coordinates] = settlement
+
+		cartography_level = min(
+			100,
+			max(0, npc.get_skill_lvl("cartography")),
+		)
+
+		known_quantity = max(
+			1,
+			int(len(locations) * cartography_level / 100),
+		)
+
+		other_locations = [
+			location
+			for coordinates, location in locations.items()
+			if coordinates != starting_coordinates
+		]
+
+		for location in random.sample(
+			other_locations,
+			known_quantity - 1,
+		):
+			coordinates = (location.gx, location.gy)
+			known_locations[coordinates] = location	
+		
+	def get_local_corpse_ids(self, settlement):
+		biome_id = settlement.region.biome.id
+
+		return [
+			f"{animal_id}_corpse"
+			for animal_id, animal in self.animals.items()
+			if biome_id in animal["biomes"]
+		]	
+		
 class Entity:
 	def __init__(self):
 		self.gx = 0
@@ -983,6 +1233,9 @@ class Character(Creature):
 				"max_xp": 200,
 				"potential": 1,
 			}
+			
+		self.handedness = random.choice(traits.HANDEDNESS_TRAITS)
+		self.handedness.apply(self)
 		
 		self.generate_dietary_profile(race_objs)
 		
@@ -994,6 +1247,9 @@ class Character(Creature):
 		self.last_name = ""
 		
 		self.full_name = f"{self.first_name} {self.middle_name} {self.last_name}"
+		
+		self.body_template_id = None
+		self.body_parts = {}
 		
 	def set_full_name(self):
 		self.full_name = f"{self.first_name} {self.middle_name} {self.last_name}"
@@ -1228,15 +1484,21 @@ class Character(Creature):
 		return success
 		
 	def remove_carried_object(self, item_id, game, quantity=1):
+		if quantity <= 0:
+			return False
+
 		if item_id in game.coin_objs:
 			success = self.wallet.remove_coins(item_id, quantity)
-			
+
 		else:
+			if self.get_unequipped_quantity(item_id) < quantity:
+				return False
+
 			success = self.inventory.remove_item(item_id, quantity)
-			
+
 		if success:
 			self.calc_encumbrance(game)
-			
+
 		return success
 		
 	def calc_encumbrance(self, game):
@@ -1305,16 +1567,168 @@ class Character(Creature):
 		
 		return self.dietary_profile.get_need_values(item_type)
 		
-	def find_inventory_item(self, item_ids):
+	def find_inventory_item(self, game, item_ids):
 		for item_id, quantity in self.inventory.get_items():
-			if quantity > 0 and item_id in item_ids:
+			if quantity > 0 and game.item_matches(item_id, item_ids):
 				return item_id
-				
+
 		return None
 		
 	def randomize_skill_potentials(self):
 		for skill in self.skills.values():
 			skill["potential"] = random.randint(1, 100)
+			
+	def generate_body(self, template_id, body_templates):
+		body_parts = copy.deepcopy(body_templates[template_id])
+
+		for part in body_parts.values():
+			part.setdefault("equipped_item_id", None)
+
+		self.body_template_id = template_id
+		self.body_parts = body_parts
+		
+	def generate_body_from_ancestry(self, race_objs, body_templates):
+		template_ids = {
+			race_objs[race_id].body_template
+			for race_id in self.ancestry
+		}
+
+		if len(template_ids) != 1:
+			raise ValueError(
+				"Mixed ancestry uses different body templates; "
+				"a body selection rule is required."
+			)
+
+		template_id = next(iter(template_ids))
+
+		self.generate_body(template_id, body_templates)
+		
+	def set_handedness(self, handedness):
+		self.handedness = handedness
+		self.handedness.apply(self)
+		
+	def get_free_hand(self):
+		free_hands = [
+			part_id
+			for part_id, part in self.body_parts.items()
+			if part.get("hand_skill") in self.skills
+			and part.get("equipped_item_id") is None
+		]
+
+		if not free_hands:
+			return None
+
+		preferred_skill = self.handedness.preferred_hand_skill
+
+		preferred_hands = [
+			part_id
+			for part_id in free_hands
+			if self.body_parts[part_id]["hand_skill"] == preferred_skill
+		]
+
+		candidates = preferred_hands or free_hands
+
+		best_level = max(
+			self.get_skill_lvl(
+				self.body_parts[part_id]["hand_skill"]
+			)
+			for part_id in candidates
+		)
+
+		best_hands = [
+			part_id
+			for part_id in candidates
+			if self.get_skill_lvl(
+				self.body_parts[part_id]["hand_skill"]
+			) == best_level
+		]
+
+		return random.choice(best_hands)
+		
+	def get_equipped_quantity(self, item_id):
+		return sum(
+			1
+			for part in self.body_parts.values()
+			if part.get("equipped_item_id") == item_id
+		)
+
+	def get_unequipped_quantity(self, item_id):
+		return max(
+			0,
+			self.inventory.get_quantity(item_id)
+			- self.get_equipped_quantity(item_id),
+		)
+
+	def equip(self, item_id, body_part_id):
+		part = self.body_parts.get(body_part_id)
+
+		if part is None:
+			return False
+
+		if part.get("hand_skill") not in self.skills:
+			return False
+
+		if part.get("equipped_item_id") is not None:
+			return False
+
+		if self.get_unequipped_quantity(item_id) < 1:
+			return False
+
+		part["equipped_item_id"] = item_id
+
+		return True
+
+	def auto_equip(self, item_id):
+		hand_id = self.get_free_hand()
+
+		if hand_id is None:
+			return False
+
+		return self.equip(item_id, hand_id)
+
+	def unequip(self, body_part_id):
+		part = self.body_parts.get(body_part_id)
+
+		if part is None:
+			return False
+
+		if part.get("equipped_item_id") is None:
+			return False
+
+		part["equipped_item_id"] = None
+
+		return True
+		
+	def find_equipped_item(self, game, item_ids):
+		for part_id, part in self.body_parts.items():
+			item_id = part.get("equipped_item_id")
+
+			if (
+				item_id is not None
+				and game.item_matches(item_id, item_ids)
+			):
+				return part_id, item_id
+
+		return None
+		
+	def ensure_equipped(self, game, item_ids):
+		equipped = self.find_equipped_item(game, item_ids)
+
+		if equipped is not None:
+			return equipped
+
+		for item_id, quantity in self.inventory.get_items():
+			if quantity <= 0:
+				continue
+
+			if not game.item_matches(item_id, item_ids):
+				continue
+
+			if self.auto_equip(item_id):
+				return self.find_equipped_item(game, item_ids)
+
+		return None
+		
 		
 class Player(Character):
 	def __init__(self, ancestry, race_objs, skill_objs):
@@ -1730,7 +2144,7 @@ class Memory:
 	def __init__(self):
 		self.known_locations = {}
 		
-		self.known_crafting_recipes = {}
+		self.known_crafting_reactions = {}
 
 class Wallet:
 	def __init__(self, coins=None):
@@ -1863,6 +2277,8 @@ class Race:
 		self.capital_buildings = args[15]
 		
 		self.character_name_systems = args[16]
+		
+		self.body_template = args[17]
 		
 	def get_name_system_id(self, name_system_type):
 		name_systems = getattr(self, f"{name_system_type}_name_systems")

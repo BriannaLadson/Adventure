@@ -202,6 +202,8 @@ class CharacterCreationScreen(Screen):
 			skill_objs=game.skills,
 		)
 		
+		player.generate_body_from_ancestry(game.race_objs, game.body_templates)
+		
 		#Skill Potential
 		for skill_id, var in self.skill_potential_vars.items():
 			player.skills[skill_id]["potential"] = int(var.get())
@@ -236,6 +238,13 @@ class CharacterCreationScreen(Screen):
 			)
 
 		player.calc_encumbrance(game)
+		
+		#Handedness
+		handedness = self.handedness_options[
+			self.handedness_var.get()
+		]
+
+		player.set_handedness(handedness)
 		
 		#Currency
 		currency_name = self.currency_var.get()

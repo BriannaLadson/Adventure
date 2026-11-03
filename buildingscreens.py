@@ -559,11 +559,15 @@ class MinePopup(Popup):
 		
 	def has_pickaxe(self):
 		return self.player.find_inventory_item(
-			self.game.pickaxe_objs
+			self.game,
+			self.game.pickaxe_objs,
 		) is not None
 		
 	def mine(self):
-		if not self.has_pickaxe():
+		if self.player.ensure_equipped(
+			self.game,
+			self.game.pickaxe_objs,
+		) is None:
 			return
 
 		value = self.hours_var.get()
@@ -580,6 +584,12 @@ class MinePopup(Popup):
 		town_map = self.play_screen.tile_map.generator
 
 		for _ in range(hours):
+			if self.player.ensure_equipped(
+				self.game,
+				self.game.pickaxe_objs,
+			) is None:
+				break
+			
 			start_hour = (
 				self.game.calendar.hour,
 				self.game.calendar.is_pm,

@@ -1,0 +1,32 @@
+{
+	"hare": {
+		"name": "Hare",
+		"biomes": ["coldlands", "lowlands"],
+		"hide_quantity": 1,
+		"meat_quantity": 1
+	},
+	"deer": {
+		"name": "Deer",
+		"biomes": ["lowlands", "highlands"],
+		"hide_quantity": 1,
+		"meat_quantity": 3
+	},
+	"boar": {
+		"name": "Boar",
+		"biomes": ["lowlands", "wetlands"],
+		"hide_quantity": 1,
+		"meat_quantity": 3
+	},
+	"ibex": {
+		"name": "Ibex",
+		"biomes": ["highlands", "drylands"],
+		"hide_quantity": 1,
+		"meat_quantity": 2
+	},
+	"gazelle": {
+		"name": "Gazelle",
+		"biomes": ["hotlands", "drylands"],
+		"hide_quantity": 1,
+		"meat_quantity": 2
+	}
+}

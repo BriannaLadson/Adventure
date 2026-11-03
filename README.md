@@ -1,4 +1,4 @@
-# Adventure v0.21.0
+# Adventure v0.22.0
 
 Adventure is an open-world sandbox RPG simulation built using Python and Tkinter.
 
@@ -39,6 +39,9 @@ For more information on game systems, modding, and development, see the project 
 - Door-based building interactions, with NPCs hidden while inside
 - NPC AI updates during player mining sessions
 - Console debugging for following a selected NPC
+- Hunters that catch biome-specific game and sell carcasses at local markets
+- Butchers and tanners that buy materials, select matching recipes, and sell finished products
+- Tree cutters that harvest wood using regional tree abundance and Wood Cutting skill, then sell it at local markets
 
 ### Economy & Banking
 
@@ -61,34 +64,26 @@ For more information on game systems, modding, and development, see the project 
 - Blacksmith production of metal pickaxes
 - Pickaxe-required mining sessions lasting 1–24 hours
 - Shared player and NPC mining results based on regional minerals and Mining skill
+- JSON-defined animal species with biome habitats and configurable hide and meat yields
+- Generated species-specific carcasses, hides, meat, leather, and crafting reactions
 
 ### Controls & Extensibility
 
 - Wait command (`.`) to advance one turn without moving
 - Data-driven systems designed for expansion and modding
 
-## What's New in v0.21.0
+## What's New in v0.22.0
 
-- Added profession-based NPC work planning.
-- Added randomized work-shift traits: first shift (6 AM–2 PM), second shift (2 PM–10 PM), and third shift (10 PM–6 AM).
-- Added miner work AI: miners check for a pickaxe, travel to a local mine, mine until they obtain one ore, and travel to a randomly selected shop to sell it.
-- NPC work queues are cancelled when their shift ends, with wandering and idling as fallback behaviors.
-- Added profession-defined starting equipment, with random selection of specific item variants.
-- Added randomized starting levels from 1–100 for configured profession skills.
-- Added independently randomized potential from 1–100 for every NPC skill.
-- Added reusable town pathfinding and building lookup methods.
-- NPCs now travel to building doors and disappear from view while occupying them.
-- Multiple NPCs can occupy building doors to represent being inside.
-- Shared player and NPC mining result logic, using regional minerals and character Mining skill.
-- NPC AI now continues running during player mining sessions.
-- Markets and banks no longer use town treasury reserves to fund transactions.
-- Bank exchange fees now range from 1–50%.
-- Fixed pickaxe detection when carrying generated map items.
-- Added console debugging for following a selected NPC's actions, inventory, and currency.
+- Hunters now catch species found in the settlement's biome, with regional fauna influencing hunting success.
+- Animal data files (`animals_*.json`) define species, habitats, and butchering yields.
+- Butchers turn each species' carcass into matching hides and meat. Tanners turn those hides into matching leather.
+- Named butchers and tanners use materials they carry or buy affordable inputs from the local market, then sell their products.
+- Background butchering and tanning select recipes based on which inputs are in stock.
+- Named tree cutters harvest wood and sell it at local markets.
 
 ### Save Compatibility
 
-Start a new save for v0.21.0. Existing saves are not migrated to the new NPC work, starting equipment, skill initialization, and banking structures.
+Start a new save for v0.22.0.
 
 ## Screenshots
 

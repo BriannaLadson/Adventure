@@ -64,6 +64,9 @@ def load_calendar(game, data):
 	calendar.on_day(game.daily_update)
 
 #Other
+def load_animals(game, data):
+	game.animals.update(data)
+
 def load_bars(game, data):
 	bar_objs = {}
 	
@@ -100,6 +103,9 @@ def load_biome_objs(game):
 		biome_objs[id] = biome_obj
 		
 	game.biome_objs = biome_objs
+	
+def load_body_templates(game, data):
+	game.body_templates.update(data)
 	
 def load_dietary_profiles(game, data):
 	dietary_profile_objs = {}
@@ -184,8 +190,9 @@ def load_races(game, data):
 			race_data["dietary_profile"],
 			race_data["capital_buildings"],
 			race_data["character_name_systems"],
+			race_data["body_template"],
 		)
-		
+				
 		race_objs[id] = race_obj
 		
 	game.race_objs = race_objs
@@ -194,6 +201,8 @@ def load_roles(game, data):
 	game.role_defs.update(data)
 	
 PREFIX_LOADERS = {
+	"animals_": load_animals,
+	"bodytemplates_": load_body_templates,
 	"dietaryprofiles_": load_dietary_profiles,
 	"fruits_": load_fruits,
 	"metals_": load_metals,
