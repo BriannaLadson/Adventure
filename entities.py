@@ -77,6 +77,7 @@ class Game:
 			"butchering": "Butchering",
 			"cartography": "Cartography",
 			"coinsmithing": "Coinsmithing",
+			"foraging": "Foraging",
 			"hunting": "Hunting",
 			"ink_making": "Ink Making",
 			"left_hand": "Left Hand",
@@ -99,6 +100,7 @@ class Game:
 			"butchering": "Determines your chance of successfully processing animal corpses.",
 			"cartography": "Determines how accurately you record location information on maps.",
 			"coinsmithing": "Determines your chance of successfully crafting coins.",
+			"foraging": "Improves your chances of finding fruit and other harvestable plants.",
 			"hunting": "Improves your chance of successfully hunting animals.",
 			"ink_making": "Determines your chance of successfully making ink.",
 			"mining": "Improves your chance of collecting ore while mining.",
@@ -114,7 +116,6 @@ class Game:
 		self.debug_npc = None
 		self.debug_enabled = False
 		self.debug_profession_id = "brewer"
-		self.debug_npc = None
 
 		self.debug_action_limit = 5
 		self.debug_history = deque(maxlen=self.debug_action_limit)
@@ -508,6 +509,20 @@ class Game:
 		
 		return map_item
 		
+	def find_carried_parchment(self, character):
+		for item_id, quantity in character.inventory.get_items():
+			if quantity <= 0:
+				continue
+
+			item_type = self.item_type_objs.get(item_id)
+			if (
+				item_id == "parchment"
+				or getattr(item_type, "type_id", None) == "parchment"
+			):
+				return item_id
+
+		return None	
+		
 	def craft_map(self, character, location):
 		coordinates = (location.gx, location.gy)
 
@@ -517,8 +532,12 @@ class Game:
 		if "cartography" not in character.skills:
 			return False, []
 
+		parchment_id = self.find_carried_parchment(character)
+		if parchment_id is None:
+			return False, []
+
 		reagents = {
-			"parchment": 1,
+			parchment_id: 1,
 			"ink": 1,
 		}
 
@@ -617,6 +636,22 @@ class Game:
 			hide = itemtypes.AnimalHideType(animal_id, animal_name)
 			meat = itemtypes.AnimalMeatType(animal_id, animal_name)
 			leather = itemtypes.AnimalLeatherType(animal_id, animal_name)
+			parchment = itemtypes.ParchmentType(
+				item_id=f"{animal_id}_parchment",
+				name=f"{animal_name} Parchment",
+				hide_id=hide.id,
+			)
+			self.item_type_objs[parchment.id] = parchment
+
+			reaction = crafting.CraftingReaction(
+				id=f"make_{parchment.id}",
+				name=f"Make {parchment.name}",
+				reagents=parchment.reagents.copy(),
+				products={parchment.id: 1},
+				skill="paper_making",
+				ticks=60,
+			)
+			self.crafting_reaction_objs[reaction.id] = reaction
 
 			for item in (corpse, hide, meat, leather):
 				self.item_type_objs[item.id] = item
@@ -750,6 +785,12 @@ class Game:
 		self.assign_butcher_reactions()
 		
 		self.assign_tanner_reactions()
+		
+		self.assign_papermaker_reactions()
+		
+		self.assign_smelter_reactions()
+		
+		self.assign_blacksmith_reactions()
 			
 	def assign_brewer_reactions(self):
 		brewer = self.profession_objs["brewer"]
@@ -775,6 +816,27 @@ class Game:
 			self.crafting_reaction_objs[f"make_{animal_id}_leather"]
 			for animal_id in self.animals
 		)
+		
+	def assign_blacksmith_reactions(self):
+		self.profession_objs["blacksmith"].crafting_reactions = [
+			reaction
+			for reaction in self.crafting_reaction_objs.values()
+			if reaction.skill == "blacksmithing"
+		]
+		
+	def assign_papermaker_reactions(self):
+		self.profession_objs["paper_maker"].crafting_reactions = [
+			reaction
+			for reaction in self.crafting_reaction_objs.values()
+			if reaction.skill == "paper_making"
+		]
+		
+	def assign_smelter_reactions(self):
+		self.profession_objs["smelter"].crafting_reactions = [
+			reaction
+			for reaction in self.crafting_reaction_objs.values()
+			if reaction.skill == "smelting"
+		]
 		
 	def get_region(self, gx, gy):
 		coordinates = (gx, gy)

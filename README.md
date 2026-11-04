@@ -1,4 +1,4 @@
-# Adventure v0.22.0
+# Adventure v0.23.0
 
 Adventure is an open-world sandbox RPG simulation built using Python and Tkinter.
 
@@ -42,6 +42,12 @@ For more information on game systems, modding, and development, see the project 
 - Hunters that catch biome-specific game and sell carcasses at local markets
 - Butchers and tanners that buy materials, select matching recipes, and sell finished products
 - Tree cutters that harvest wood using regional tree abundance and Wood Cutting skill, then sell it at local markets
+- Work routines for all current NPC professions
+- Paper makers, wood burners, smelters, and blacksmiths that craft goods, sell them at local markets, and buy materials when supplies are available and affordable
+- Coinsmiths that mint coins and keep the proceeds in their wallets
+- Water collectors and foragers that gather local resources and sell them at market
+- Cartographers that buy ink and available parchment variants, draw maps, and sell them at market
+- Skill-based starting recipe selection and matching starter materials for professions such as smelters, coinsmiths, and blacksmiths
 
 ### Economy & Banking
 
@@ -66,24 +72,27 @@ For more information on game systems, modding, and development, see the project 
 - Shared player and NPC mining results based on regional minerals and Mining skill
 - JSON-defined animal species with biome habitats and configurable hide and meat yields
 - Generated species-specific carcasses, hides, meat, leather, and crafting reactions
+- Species-specific parchment made from matching animal hides
+- Foraging success based on Foraging skill and local flora, with the biome determining which fruits can be found
+- Water collection based on local water abundance
 
 ### Controls & Extensibility
 
 - Wait command (`.`) to advance one turn without moving
 - Data-driven systems designed for expansion and modding
 
-## What's New in v0.22.0
+## What's New in v0.23.0
 
-- Hunters now catch species found in the settlement's biome, with regional fauna influencing hunting success.
-- Animal data files (`animals_*.json`) define species, habitats, and butchering yields.
-- Butchers turn each species' carcass into matching hides and meat. Tanners turn those hides into matching leather.
-- Named butchers and tanners use materials they carry or buy affordable inputs from the local market, then sell their products.
-- Background butchering and tanning select recipes based on which inputs are in stock.
-- Named tree cutters harvest wood and sell it at local markets.
+- Completed work AI for the current NPC professions. NPCs can earn money through gathering, crafting, trade, and coin minting. Their earnings depend on skill, material availability, and local prices.
+- Added paper maker work routines and species-specific parchment recipes. Cartographer NPCs can buy and use the new parchment variants to make maps.
+- Added wood burner, smelter, and blacksmith work routines. Wood burners make coal, smelters turn ore into bars, and blacksmiths use bars, coal, and wood to forge pickaxes for sale.
+- Added coinsmith work routines. Successfully minted coins go directly into the coinsmith's wallet.
+- Added water collector and forager work routines. Water collectors supply local markets with water, and foragers gather biome-specific fruit using the Foraging skill.
+- Removed water from background foraging, making water collectors the dedicated water-producing profession.
 
 ### Save Compatibility
 
-Start a new save for v0.22.0.
+Start a new save for v0.23.0.
 
 ## Screenshots
 

@@ -262,16 +262,28 @@ class Cartographer(Profession):
 				item_id
 				for item_id, quantity in character.inventory.get_items()
 				if quantity > 0
-				and isinstance(game.item_type_objs[item_id], items.Map)
+				and isinstance(game.item_type_objs.get(item_id), items.Map)
 			),
 			None,
 		)
 
-		missing_supplies = [
+		missing_supplies = []
+
+		if not character.inventory.has_item("ink"):
+			missing_supplies.append(["ink"])
+
+		parchment_ids = [
 			item_id
-			for item_id in ("ink", "parchment")
-			if not character.inventory.has_item(item_id)
+			for item_id, item_type in game.item_type_objs.items()
+			if item_id == "parchment"
+			or getattr(item_type, "type_id", None) == "parchment"
 		]
+
+		if not any(
+			character.inventory.has_item(item_id)
+			for item_id in parchment_ids
+		):
+			missing_supplies.append(parchment_ids)
 
 		if map_id is not None or missing_supplies:
 			shops = town_map.get_buildings(is_shop=True)
@@ -282,33 +294,55 @@ class Cartographer(Profession):
 
 			shop = random.choice(shops)
 
-			character.actions.append(("travel", shop))
-
 			if map_id is not None:
-				character.actions.append(
-					("sell", (shop, map_id))
-				)
+				character.actions.extend([
+					("travel", shop),
+					("sell", (shop, map_id)),
+				])
+				return
 
-			else:
-				for item_id in missing_supplies:
-					character.actions.append(
-						("buy", (shop, item_id))
-					)
+			settlement = town_map.settlement
+			market = settlement.sub_economy
+			budget = character.wallet.get_quantity(settlement.currency)
+			purchases = []
 
+			for candidates in missing_supplies:
+				affordable = [
+					item_id
+					for item_id in candidates
+					if market.has_item(item_id, 1)
+					and market.get_value(item_id) <= budget
+				]
+
+				if not affordable:
+					character.actions.append(("idle", None))
+					return
+
+				item_id = min(affordable, key=market.get_value)
+				budget -= market.get_value(item_id)
+				purchases.append(("buy_material", (shop, item_id, 1)))
+
+			character.actions.append(("travel", shop))
+			character.actions.extend(purchases)
 			return
 
-		locations = list(
-			character.memory.known_locations.values()
-		)
+		locations = list(character.memory.known_locations.values())
 
 		if not locations:
 			character.actions.append(("idle", None))
 			return
 
 		location = random.choice(locations)
-
-		character.actions.append(("make_map", location))			
+		character.actions.append(("make_map", location))		
 				
+				
+	def get_parchment_ids(self, game):
+		return [
+			item_id
+			for item_id, item_type in game.item_type_objs.items()
+			if item_id == "parchment"
+			or getattr(item_type, "type_id", None) == "parchment"
+		]
 		
 class Butcher(Profession):
 	def __init__(self):
@@ -756,6 +790,62 @@ class PaperMaker(Profession):
 			"parchment"
 		]
 		
+		self.starting_skills = [
+			"paper_making",
+		]
+		
+		self.starting_items = {
+			"animal_hide": 5,
+		}
+		
+		self.reactions_based_on_skill = True
+		
+	def add_work_ai(self, game, character, town_map):
+		shops = town_map.get_buildings(is_shop=True)
+		shop = random.choice(shops) if shops else None
+
+		if shop is not None:
+			for reaction in self.crafting_reactions:
+				paper_id = next(iter(reaction.products))
+				if character.inventory.has_item(paper_id):
+					character.actions.extend([
+						("travel", shop),
+						("sell", (shop, paper_id)),
+					])
+					return
+
+		known_reactions = character.memory.known_crafting_reactions
+		reactions = [
+			reaction
+			for reaction in self.crafting_reactions
+			if reaction.id in known_reactions
+		]
+
+		for reaction in reactions:
+			hide_id = next(iter(reaction.reagents))
+			if character.inventory.has_item(hide_id):
+				character.actions.append(("craft", reaction.id))
+				return
+
+		if shop is not None:
+			settlement = town_map.settlement
+			market = settlement.sub_economy
+			budget = character.wallet.get_quantity(settlement.currency)
+
+			for reaction in reactions:
+				hide_id = next(iter(reaction.reagents))
+				if (
+					market.has_item(hide_id, 1)
+					and market.get_value(hide_id) <= budget
+				):
+					character.actions.extend([
+						("travel", shop),
+						("buy_material", (shop, hide_id, 1)),
+					])
+					return
+
+		character.actions.append(("idle", None))
+		
 class WoodBurner(Profession):
 	def __init__(self):
 		super().__init__()
@@ -767,6 +857,52 @@ class WoodBurner(Profession):
 		self.outputs = [
 			"coal"
 		]
+		
+		self.starting_skills = [
+			"wood_burning",
+		]
+		
+		self.starting_items = {
+			"wood": 5,
+		}
+		
+	def add_work_ai(self, game, character, town_map):
+		shops = town_map.get_buildings(is_shop=True)
+
+		if character.inventory.has_item("coal") and shops:
+			shop = random.choice(shops)
+			character.actions.extend([
+				("travel", shop),
+				("sell", (shop, "coal")),
+			])
+			return
+
+		reaction = character.memory.known_crafting_reactions.get("make_coal")
+		if reaction is None:
+			character.actions.append(("idle", None))
+			return
+
+		if character.inventory.has_item("wood", 1):
+			character.actions.append(("craft", reaction.id))
+			return
+
+		settlement = town_map.settlement
+		market = settlement.sub_economy
+		budget = character.wallet.get_quantity(settlement.currency)
+
+		if (
+			shops
+			and market.has_item("wood", 1)
+			and market.get_value("wood") <= budget
+		):
+			shop = random.choice(shops)
+			character.actions.extend([
+				("travel", shop),
+				("buy_material", (shop, "wood", 1)),
+			])
+			return
+
+		character.actions.append(("idle", None))
 		
 class Miner(Profession):
 	def __init__(self):
@@ -864,6 +1000,12 @@ class Smelter(Profession):
 		
 		self.outputs = []
 		
+		self.starting_skills = [
+			"smelting",
+		]
+		
+		self.reactions_based_on_skill = True
+		
 	def produce(self, settlement, game):
 		sub_economy = settlement.sub_economy
 		
@@ -894,7 +1036,90 @@ class Smelter(Profession):
 				for reagent_id, amount in reagents.items():
 					if not sub_economy.has_item(reagent_id, amount):
 						sub_economy.change_modifier(reagent_id, amount)
-			
+						
+	def add_work_ai(self, game, character, town_map):
+		shops = town_map.get_buildings(is_shop=True)
+		shop = random.choice(shops) if shops else None
+
+		if shop is not None:
+			for bar_id in game.bar_objs:
+				if character.inventory.has_item(bar_id, 1):
+					character.actions.extend([
+						("travel", shop),
+						("sell", (shop, bar_id)),
+					])
+					return
+
+		known_reactions = character.memory.known_crafting_reactions
+		reactions = [
+			reaction
+			for reaction in self.crafting_reactions
+			if reaction.id in known_reactions
+		]
+
+		for reaction in reactions:
+			if all(
+				character.inventory.has_item(item_id, quantity)
+				for item_id, quantity in reaction.reagents.items()
+			):
+				character.actions.append(("craft", reaction.id))
+				return
+
+		if shop is not None:
+			settlement = town_map.settlement
+			market = settlement.sub_economy
+			budget = character.wallet.get_quantity(settlement.currency)
+
+			for reaction in reactions:
+				missing = {}
+				for item_id, quantity in reaction.reagents.items():
+					shortfall = quantity - character.inventory.get_quantity(item_id)
+					if shortfall > 0:
+						missing[item_id] = shortfall
+
+				if not all(
+					market.has_item(item_id, quantity)
+					for item_id, quantity in missing.items()
+				):
+					continue
+
+				cost = sum(
+					market.get_value(item_id) * quantity
+					for item_id, quantity in missing.items()
+				)
+				if cost > budget:
+					continue
+
+				character.actions.append(("travel", shop))
+				character.actions.extend(
+					("buy_material", (shop, item_id, quantity))
+					for item_id, quantity in missing.items()
+				)
+				return
+
+		character.actions.append(("idle", None))
+		
+	def give_starting_items(self, game, character):
+		super().give_starting_items(game, character)
+
+		known_reactions = character.memory.known_crafting_reactions
+		smelting_reactions = [
+			reaction
+			for reaction in self.crafting_reactions
+			if reaction.id in known_reactions
+		]
+
+		if not smelting_reactions:
+			return
+
+		reaction = random.choice(smelting_reactions)
+		for item_id, quantity in reaction.reagents.items():
+			character.add_carried_object(
+				item_id,
+				game,
+				quantity=quantity * 5,
+			)
+		
 class Coinsmith(Profession):
 	def __init__(self):
 		super().__init__()
@@ -902,6 +1127,12 @@ class Coinsmith(Profession):
 		self.id = "coinsmith"
 		
 		self.name = "Coinsmith"
+		
+		self.starting_skills = [
+			"coinsmithing",
+		]
+		
+		self.reactions_based_on_skill = True
 		
 	def produce(self, settlement, game):
 		sub_economy = settlement.sub_economy
@@ -938,6 +1169,73 @@ class Coinsmith(Profession):
 					if not sub_economy.has_item(reagent_id, quantity):
 						sub_economy.change_modifier(reagent_id, quantity)
 					
+	def give_starting_items(self, game, character):
+		super().give_starting_items(game, character)
+
+		reactions = [
+			reaction
+			for reaction in character.memory.known_crafting_reactions.values()
+			if reaction.skill == "coinsmithing"
+		]
+
+		if not reactions:
+			return
+
+		reaction = random.choice(reactions)
+		for item_id, quantity in reaction.reagents.items():
+			character.add_carried_object(item_id, game, quantity=quantity * 5)
+
+	def add_work_ai(self, game, character, town_map):
+		reactions = [
+			reaction
+			for reaction in character.memory.known_crafting_reactions.values()
+			if reaction.skill == "coinsmithing"
+		]
+		recipes_to_restock = []
+
+		for reaction in reactions:
+			missing = {}
+			for item_id, quantity in reaction.reagents.items():
+				shortfall = quantity - character.inventory.get_quantity(item_id)
+				if shortfall > 0:
+					missing[item_id] = shortfall
+
+			if not missing:
+				character.actions.append(("craft", reaction.id))
+				return
+
+			recipes_to_restock.append(missing)
+
+		shops = town_map.get_buildings(is_shop=True)
+		if shops:
+			settlement = town_map.settlement
+			market = settlement.sub_economy
+			budget = character.wallet.get_quantity(settlement.currency)
+
+			for missing in recipes_to_restock:
+				if not all(
+					market.has_item(item_id, quantity)
+					for item_id, quantity in missing.items()
+				):
+					continue
+
+				cost = sum(
+					market.get_value(item_id) * quantity
+					for item_id, quantity in missing.items()
+				)
+				if cost > budget:
+					continue
+
+				shop = random.choice(shops)
+				character.actions.append(("travel", shop))
+				character.actions.extend(
+					("buy_material", (shop, item_id, quantity))
+					for item_id, quantity in missing.items()
+				)
+				return
+
+		character.actions.append(("idle", None))				
+					
 class WaterCollector(Profession):
 	def __init__(self):
 		super().__init__()
@@ -963,62 +1261,170 @@ class WaterCollector(Profession):
 		
 		sub_economy.add_item("water", quantity=water_quantity)
 		
+	def add_work_ai(self, game, character, town_map):
+		if character.inventory.has_item("water", 1):
+			shops = town_map.get_buildings(is_shop=True)
+			if shops:
+				shop = random.choice(shops)
+				character.actions.extend([
+					("travel", shop),
+					("sell", (shop, "water")),
+				])
+			else:
+				character.actions.append(("idle", None))
+			return
+
+		if town_map.settlement.resources["water"] > 0:
+			character.actions.append(("collect_water", None))
+		else:
+			character.actions.append(("idle", None))
+		
 class Forager(Profession):
 	def __init__(self):
 		super().__init__()
-		
+
 		self.id = "forager"
 		
 		self.name = "Forager"
 		
 		self.outputs = [
-			"fruit",
-			"water",
+			"fruit"
 		]
 		
 		self.can_craft = False
 		
-	def produce(self, settlement, game):
-		sub_economy = settlement.sub_economy
-		
-		foragers = settlement.get_active_workers(self)
-		
-		flora = settlement.resources["flora"]
-		water = settlement.resources["water"]
-		
-		biome_id = settlement.region.biome.id
-		
-		fruit_outputs = [
-			fruit_id 
-			for fruit_id, fruit in game.fruit_objs.items()
-			if fruit.can_forage
-			and biome_id in fruit.biomes
+		self.starting_skills = [
+			"foraging"
 		]
-		
+
+	def get_local_fruit_ids(self, settlement, game):
+		biome_id = settlement.region.biome.id
+
+		return [
+			fruit_id
+			for fruit_id, fruit in game.fruit_objs.items()
+			if fruit.can_forage and biome_id in fruit.biomes
+		]
+
+	def produce(self, settlement, game):
+		fruit_ids = self.get_local_fruit_ids(settlement, game)
+		if not fruit_ids:
+			return
+
+		flora = settlement.resources["flora"]
+		foragers = settlement.get_active_workers(self)
+
 		for _ in range(foragers):
-			forage_type = random.choice(["fruit", "water"])
-			
-			if forage_type == "water":
-				chance = water
-				forage_item = "water"
-				
+			if random.randint(1, 100) <= flora:
+				fruit_id = random.choice(fruit_ids)
+				settlement.sub_economy.add_item(fruit_id, quantity=1)
+
+	def add_work_ai(self, game, character, town_map):
+		for item_id, quantity in character.inventory.get_items():
+			fruit = game.fruit_objs.get(item_id)
+			if quantity <= 0 or fruit is None or not fruit.can_forage:
+				continue
+
+			shops = town_map.get_buildings(is_shop=True)
+			if shops:
+				shop = random.choice(shops)
+				character.actions.extend([
+					("travel", shop),
+					("sell", (shop, item_id)),
+				])
 			else:
-				if not fruit_outputs:
-					continue
-					
-				chance = flora
-				forage_item = random.choice(fruit_outputs)
-				
-			if random.randint(1, 100) <= chance:
-				sub_economy.add_item(forage_item, quantity=1)
+				character.actions.append(("idle", None))
+			return
+
+		if self.get_local_fruit_ids(town_map.settlement, game):
+			character.actions.append(("forage", None))
+		else:
+			character.actions.append(("idle", None))
 	
 class Blacksmith(Profession):
 	def __init__(self):
 		super().__init__()
-		
+
 		self.id = "blacksmith"
 		
 		self.name = "Blacksmith"
+		
+		self.starting_skills = [
+			"blacksmithing"
+		]
+		
+		self.reactions_based_on_skill = True
+
+	def get_known_recipes(self, character):
+		return [
+			reaction
+			for reaction in character.memory.known_crafting_reactions.values()
+			if reaction.skill == "blacksmithing"
+		]
+
+	def give_starting_items(self, game, character):
+		super().give_starting_items(game, character)
+
+		reactions = self.get_known_recipes(character)
+		if reactions:
+			reaction = random.choice(reactions)
+			for item_id, quantity in reaction.reagents.items():
+				character.add_carried_object(item_id, game, quantity=quantity * 5)
+
+	def add_work_ai(self, game, character, town_map):
+		shops = town_map.get_buildings(is_shop=True)
+		shop = random.choice(shops) if shops else None
+		pickaxe_id = character.find_inventory_item(game, game.pickaxe_objs)
+
+		if shop is not None and pickaxe_id is not None:
+			character.actions.extend([
+				("travel", shop),
+				("sell", (shop, pickaxe_id)),
+			])
+			return
+
+		missing_by_recipe = []
+
+		for reaction in self.get_known_recipes(character):
+			missing = {}
+			for item_id, quantity in reaction.reagents.items():
+				shortfall = quantity - character.inventory.get_quantity(item_id)
+				if shortfall > 0:
+					missing[item_id] = shortfall
+
+			if not missing:
+				character.actions.append(("craft", reaction.id))
+				return
+
+			missing_by_recipe.append(missing)
+
+		if shop is not None:
+			settlement = town_map.settlement
+			market = settlement.sub_economy
+			budget = character.wallet.get_quantity(settlement.currency)
+
+			for missing in missing_by_recipe:
+				if not all(
+					market.has_item(item_id, quantity)
+					for item_id, quantity in missing.items()
+				):
+					continue
+
+				cost = sum(
+					market.get_value(item_id) * quantity
+					for item_id, quantity in missing.items()
+				)
+				if cost > budget:
+					continue
+
+				character.actions.append(("travel", shop))
+				character.actions.extend(
+					("buy_material", (shop, item_id, quantity))
+					for item_id, quantity in missing.items()
+				)
+				return
+
+		character.actions.append(("idle", None))
 	
 PROFESSIONS = {
 	"hunter": Hunter(),

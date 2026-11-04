@@ -217,21 +217,16 @@ class Ink(ItemType):
 		
 		self.base_value = 4
 		
-class Parchment(ItemType):
-	def __init__(self):
+class ParchmentType(ItemType):
+	def __init__(self, item_id="parchment", name="Parchment", hide_id="animal_hide"):
 		super().__init__(
-			categories = ["Material"]
+			id=item_id,
+			name=name,
+			type_id="parchment",
+			base_value=8,
 		)
-		
-		self.id = "parchment"
-		
-		self.name = "Parchment"
-		
-		self.base_value = 8
-		
-		self.reagents = {
-			"animal_hide": 1,
-		}
+
+		self.reagents = {hide_id: 1}
 		
 class Water(ItemType):
 	def __init__(self):
@@ -325,7 +320,7 @@ ITEM_TYPES = {
 	"animal_meat": AnimalMeatType(),
 	"coal": Coal(),
 	"ink": Ink(),
-	"parchment": Parchment(),
+	"parchment": ParchmentType(),
 	"water": Water(),
 	"wine": Wine(),
 	"wood": Wood(),

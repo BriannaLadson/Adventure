@@ -364,9 +364,26 @@ def make_map(game, character, town_map, location):
 	if character.memory.known_locations.get(coordinates) is not location:
 		return None
 
+	parchment_id = next(
+		(
+			item_id
+			for item_id, quantity in character.inventory.get_items()
+			if quantity > 0
+			and (
+				item_id == "parchment"
+				or getattr(game.item_type_objs.get(item_id), "type_id", None)
+				== "parchment"
+			)
+		),
+		None,
+	)
+
+	if parchment_id is None:
+		return None
+
 	reagents = {
 		"ink": 1,
-		"parchment": 1,
+		parchment_id: 1,
 	}
 
 	for item_id, quantity in reagents.items():
@@ -384,18 +401,13 @@ def make_map(game, character, town_map, location):
 			"id": "mapmaking",
 			"started": hour,
 		}
-
 		return False
 
 	if character.current_activity["started"] == hour:
 		return False
 
 	for item_id, quantity in reagents.items():
-		character.remove_carried_object(
-			item_id,
-			game,
-			quantity,
-		)
+		character.remove_carried_object(item_id, game, quantity)
 
 	cartography_level = character.get_skill_lvl("cartography")
 
@@ -405,15 +417,10 @@ def make_map(game, character, town_map, location):
 		cartography_lvl=cartography_level,
 	)
 
-	character.add_carried_object(
-		map_item.id,
-		game,
-		quantity=1,
-	)
-
+	character.add_carried_object(map_item.id, game, quantity=1)
 	character.gain_skill_xp("cartography")
 
-	return True	
+	return True
 	
 def butcher(game, character, town_map, target):
 	if not character.inventory.has_item("animal_corpse"):
@@ -547,6 +554,73 @@ def craft(game, character, town_map, reaction_id):
 
 	return True
 	
+def collect_water(game, character, town_map, target):
+	water = town_map.settlement.resources["water"]
+	if water <= 0:
+		return None
+
+	hour = (
+		game.calendar.date_string(),
+		game.calendar.hour,
+		game.calendar.is_pm,
+	)
+
+	if character.current_activity is None:
+		character.current_activity = {
+			"id": "water_collecting",
+			"started": hour,
+		}
+		return False
+
+	if character.current_activity["started"] == hour:
+		return False
+
+	if random.randint(1, 100) <= water:
+		if character.add_carried_object("water", game, quantity=1):
+			return True
+
+	character.current_activity["started"] = hour
+	return False
+	
+def forage(game, character, town_map, target):
+	settlement = town_map.settlement
+	fruit_ids = character.profession.get_local_fruit_ids(settlement, game)
+	if not fruit_ids:
+		return None
+
+	hour = (
+		game.calendar.date_string(),
+		game.calendar.hour,
+		game.calendar.is_pm,
+	)
+
+	if character.current_activity is None:
+		character.current_activity = {
+			"id": "foraging",
+			"started": hour,
+		}
+		return False
+
+	if character.current_activity["started"] == hour:
+		return False
+
+	flora = settlement.resources["flora"]
+	foraging_level = character.get_skill_lvl("foraging")
+	chance = min(100, max(0, (flora + foraging_level) / 2))
+
+	success = False
+	if random.randint(1, 100) <= chance:
+		fruit_id = random.choice(fruit_ids)
+		success = character.add_carried_object(fruit_id, game, quantity=1)
+
+	character.gain_skill_xp("foraging")
+
+	if success:
+		return True
+
+	character.current_activity["started"] = hour
+	return False
+	
 action_dict = {
 	"move": move,
 	"idle": idle,
@@ -560,6 +634,8 @@ action_dict = {
 	"buy_material": buy_material,
 	"craft": craft,
 	"cut_tree": cut_tree,
+	"collect_water": collect_water,
+	"forage": forage,
 }
 
 

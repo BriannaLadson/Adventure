@@ -1011,7 +1011,7 @@ class MapCraftingPopup(Popup):
 			).pack(fill=X)
 
 			can_make = (
-				self.player.inventory.has_item("parchment", 1)
+				self.game.find_carried_parchment(self.player) is not None
 				and self.player.inventory.has_item("ink", 1)
 				and "cartography" in self.player.skills
 			)
