@@ -13,6 +13,9 @@ def generate_world(game):
 	
 	for _ in range(game.initial_production_cycles):
 		game.run_settlement_production()
+		
+	for settlement in game.settlements:
+		game.generate_settlement_npcs(settlement)
 	
 def generate_civilizations(game):
 	game.civilizations = []

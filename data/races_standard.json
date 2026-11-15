@@ -1,11 +1,11 @@
 {
 	"human": {
 		"name": "Human",
-		"civilization_number": 20,
+		"civilization_number": 10,
 		"civilization_name_systems": [
 			"human_civilization_names"
 		],
-		"settlement_number": 10,
+		"settlement_number": 5,
 		"settlement_biomes": [
 			"lowlands",
 			"wetlands",
@@ -86,15 +86,21 @@
 		"character_name_systems": [
 			"human_names"
 		],
-		"body_template": "humanoid_body"
+		"body_template": "humanoid_body",
+		"sprites": [
+			"humanoid_sprite"
+		],
+		"sprite_palettes": [
+			"human_palette"
+		]
 	},
 	"dwarf": {
 		"name": "Dwarf",
-		"civilization_number": 20,
+		"civilization_number": 10,
 		"civilization_name_systems": [
 			"dwarf_civilization_names"
 		],
-		"settlement_number": 10,
+		"settlement_number": 5,
 		"settlement_biomes": [
 			"lowlands",
 			"wetlands",
@@ -175,20 +181,28 @@
 		"character_name_systems": [
 			"dwarf_names"
 		],
-		"body_template": "humanoid_body"
+		"body_template": "humanoid_body",
+		"sprites": [
+			"humanoid_sprite"
+		],
+		"sprite_palettes": [
+			"dwarf_palette"
+		]
 	},
 	"elf": {
 		"name": "Elf",
-		"civilization_number": 20,
+		"civilization_number": 10,
 		"civilization_name_systems": [
 			"elf_civilization_names"
 		],
-		"settlement_number": 10,
+		"settlement_number": 5,
 		"settlement_biomes": [
 			"lowlands",
 			"wetlands",
+			"drylands",
 			"coldlands",
-			"hotlands"
+			"hotlands",
+			"highlands"
 		],
 		"settlement_char": "E",
 		"settlement_char_color": "#228B22",
@@ -262,6 +276,107 @@
 		"character_name_systems": [
 			"elf_names"
 		],
-		"body_template": "humanoid_body"
+		"body_template": "humanoid_body",
+		"sprites": [
+			"humanoid_sprite"
+		],
+		"sprite_palettes": [
+			"elf_palette"
+		]
+	},
+	"goblin": {
+		"name": "Goblin",
+		"civilization_number": 10,
+		"civilization_name_systems": [
+			"goblin_civilization_names"
+		],
+		"settlement_number": 5,
+		"settlement_biomes": [
+			"lowlands",
+			"wetlands",
+			"drylands",
+			"coldlands",
+			"hotlands",
+			"highlands"
+		],
+		"settlement_char": "G",
+		"settlement_char_color": "#000000",
+		"settlement_name_systems": [
+			"goblin_settlement_names"
+		],
+		"capital_buildings": {
+			"market_building": {
+				"min_quantity": 1,
+				"max_quantity": 1,
+				"priority": 100
+			},
+			"bank_building": {
+				"min_quantity": 1,
+				"max_quantity": 1,
+				"priority": 100
+			},
+			"mine_building": {
+				"min_quantity": 1,
+				"max_quantity": 1,
+				"priority": 100
+			}
+		},
+		"settlement_buildings": {
+			"market_building": {
+				"min_quantity": 1,
+				"max_quantity": 1,
+				"priority": 100
+			},
+			"bank_building": {
+				"min_quantity": 1,
+				"max_quantity": 1,
+				"priority": 100
+			},
+			"mine_building": {
+				"min_quantity": 0,
+				"max_quantity": 1,
+				"priority": 100
+			}
+		},
+		"settlement_professions": {
+			"hunter": [0, 100],
+			"butcher": [0, 100],
+			"ink_maker": [0, 100],
+			"tanner": [0, 100],
+			"tree_cutter": [0, 100],
+			"paper_maker": [0, 100],
+			"wood_burner": [0, 100],
+			"cartographer": [0, 100],
+			"miner": [0, 100],
+			"smelter": [0, 100],
+			"coinsmith": [0, 100],
+			"water_collector":[0, 100],
+			"forager": [0, 100],
+			"brewer": [0, 100],
+			"blacksmith": [0, 100]
+		},
+		"currency": "copper_coin",
+		"settlement_currency": [0, 1000],
+		"needs": {
+			"hunger": {
+				"max": 100,
+				"decay": 1
+			},
+			"thirst": {
+				"max": 100,
+				"decay": 1
+			}
+		},
+		"dietary_profile": "goblin_dietaryprofile",
+		"character_name_systems": [
+			"goblin_names"
+		],
+		"body_template": "humanoid_body",
+		"sprites": [
+			"humanoid_sprite"
+		],
+		"sprite_palettes": [
+			"goblin_palette"
+		]
 	}
 }

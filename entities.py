@@ -7,6 +7,7 @@ import time
 from collections import deque
 import uuid
 from copy import deepcopy
+from bite import Bite
 
 import helpfunctions as helpf
 import professions
@@ -16,12 +17,15 @@ import items
 import inventory
 import crafting
 import traits
+import aidebug
 
 class Game:
 	def __init__(self, save_path):
 		self.save_path = save_path + "/game_data"
 		
 		self.calendar = None
+		
+		self.sprite_manager = SpriteManager()
 		
 		self.directions = {
 			"north": [0, -1],
@@ -114,13 +118,18 @@ class Game:
 		}
 		
 		self.debug_npc = None
-		self.debug_enabled = False
+		self.debug_enabled = True
 		self.debug_profession_id = "brewer"
 
 		self.debug_action_limit = 5
 		self.debug_history = deque(maxlen=self.debug_action_limit)
 		
+		self.town_debug_log = []
+		self.overworld_debug_log = []
+		
 		self.body_templates = {}
+		
+		self.overworld_npcs = []
 		
 	def init_economy(self):
 		base_values = {}
@@ -136,16 +145,20 @@ class Game:
 	def inc_time(self, ticks=None):
 		if ticks is None:
 			ticks = self.get_turn_ticks(self.player)
-			
+
 		old_hour = self.calendar.hour
 		old_is_pm = self.calendar.is_pm
-			
+
 		self.calendar.update(ticks=ticks)
-		
+
 		if old_hour != self.calendar.hour or old_is_pm != self.calendar.is_pm:
 			return self.hourly_update()
-			
+
 		return []
+		
+	def clear_debug_logs(self):
+		self.town_debug_log = []
+		self.overworld_debug_log = []
 		
 	def get_movement_ticks(self, entity):
 		if entity.is_location_local():
@@ -401,7 +414,7 @@ class Game:
 				location = self.location_map[gy][gx]
 				
 				if location is not None and (gx, gy) not in character.memory.known_locations:
-					character.memory.known_locations[(gx, gy)] = location
+					character.memory.known_locations.add((gx, gy))
 					new_locations.append(location)
 					
 		return new_locations
@@ -417,11 +430,11 @@ class Game:
 	def daily_update(self, calendar=None):
 		if calendar is None:
 			calendar = self.calendar
+			
+		self.tick_town_departure_timers()
 		
 		if calendar.hour == 12 and not calendar.is_pm:
 			self.run_settlement_production()
-			
-			#self.run_settlement_consumption()
 			
 	def hourly_update(self):
 		dead_entities = []
@@ -437,15 +450,27 @@ class Game:
 				if entity.is_dead():
 					dead_entities.append(entity)
 					
+		self.update_overworld_npcs()
+					
 		return dead_entities
 	
 	def get_discovered_locations_quantity(self, entity):
 		if hasattr(entity, "memory"):
 			memory = entity.memory
 			
-			return len(memory.known_locations.values())
+			return len(memory.known_locations)
 			
 		return 0
+		
+	def get_known_locations(self, character):
+		locations = []
+
+		for gx, gy in character.memory.known_locations:
+			location = self.location_map[gy][gx]
+			if location is not None:
+				locations.append(location)
+
+		return locations
 		
 	def buy_item(self, buyer, settlement, item_id, quantity=1):
 		sub_economy = settlement.sub_economy
@@ -526,7 +551,7 @@ class Game:
 	def craft_map(self, character, location):
 		coordinates = (location.gx, location.gy)
 
-		if character.memory.known_locations.get(coordinates) is not location:
+		if coordinates not in character.memory.known_locations:
 			return False, []
 
 		if "cartography" not in character.skills:
@@ -900,7 +925,7 @@ class Game:
 
 		return True, []
 		
-	def generate_settlement_npcs(self, settlement, town_map):
+	def generate_settlement_npcs(self, settlement):
 		if settlement.npcs is not None:
 			return
 
@@ -916,71 +941,53 @@ class Game:
 			if quantity > 0
 		}
 
-		positions = [
-			(x, y)
-			for y, row in enumerate(town_map.map_array)
-			for x, tile in enumerate(row)
-			if tile == TownForge.GROUND
-		]
-
-		player = self.player
-
-		if (player.gx, player.gy) == (settlement.gx, settlement.gy):
-			positions = [
-				position for position in positions
-				if position != (player.lx, player.ly)
-			]
-
 		count = min(
 			self.max_npcs,
 			sum(races.values()),
 			sum(professions.values()),
-			len(positions)
 		)
 
 		settlement.npcs = []
 
-		for lx, ly in random.sample(positions, count):
+		for _ in range(count):
 			race_id = random.choices(
 				list(races),
-				weights=list(races.values())
+				weights=list(races.values()),
 			)[0]
 
 			profession_id = random.choices(
 				list(professions),
-				weights=list(professions.values())
+				weights=list(professions.values()),
 			)[0]
 
 			npc = NPC({race_id: 1}, self.race_objs, self.skills)
-			
 			npc.generate_body_from_ancestry(self.race_objs, self.body_templates)
 
 			npc.settlement = settlement
-			
+			npc.gx = settlement.gx
+			npc.gy = settlement.gy
+			npc.migration_trait = random.choice(self.migration_traits)
+			npc.days_until_departure = npc.migration_trait.roll_stay_length()
+
 			npc.profession_id = profession_id
 			npc.profession = self.profession_objs[profession_id]
-			
 			npc.profession.give_starting_skills(npc)
 			npc.profession.give_starting_reactions(self, npc)
 			npc.profession.give_starting_items(self, npc)
 
-			
 			self.give_npc_starting_locations(npc, settlement)
-			
 			npc.randomize_skill_potentials()
 
-			npc.gx = settlement.gx
-			npc.gy = settlement.gy
-			npc.lx = lx
-			npc.ly = ly
-			npc.lz = 0
-
 			race = self.race_objs[race_id]
+
+			if race.sprites and race.sprites_palettes:
+				npc.sprite = random.choice(race.sprites)
+				npc.sprite_palette = random.choice(race.sprites_palettes)
+
 			name_system_id = race.get_name_system_id("character")
 
 			if name_system_id is not None:
 				name_system = self.name_system_objs[name_system_id]
-
 				npc.first_name = name_system.get_name()
 				npc.last_name = name_system.get_name()
 
@@ -988,7 +995,7 @@ class Game:
 				part for part in (
 					npc.first_name,
 					npc.middle_name,
-					npc.last_name
+					npc.last_name,
 				)
 				if part
 			)
@@ -997,7 +1004,6 @@ class Game:
 
 			races[race_id] -= 1
 			professions[profession_id] -= 1
-
 			settlement.races[race_id] -= 1
 			settlement.professions[profession_id] -= 1
 			
@@ -1168,21 +1174,19 @@ class Game:
 		
 	def give_npc_starting_locations(self, npc, settlement):
 		known_locations = npc.memory.known_locations
-
 		starting_coordinates = (settlement.gx, settlement.gy)
-		known_locations[starting_coordinates] = settlement
+		known_locations.add(starting_coordinates)
 
 		if npc.profession_id != "cartographer":
 			return
 
 		locations = {
-			(location.gx, location.gy): location
+			(location.gx, location.gy)
 			for row in self.location_map
 			for location in row
 			if location is not None
 		}
-
-		locations[starting_coordinates] = settlement
+		locations.add(starting_coordinates)
 
 		cartography_level = min(
 			100,
@@ -1194,18 +1198,10 @@ class Game:
 			int(len(locations) * cartography_level / 100),
 		)
 
-		other_locations = [
-			location
-			for coordinates, location in locations.items()
-			if coordinates != starting_coordinates
-		]
-
-		for location in random.sample(
-			other_locations,
-			known_quantity - 1,
-		):
-			coordinates = (location.gx, location.gy)
-			known_locations[coordinates] = location	
+		other_locations = sorted(locations - {starting_coordinates})
+		known_locations.update(
+			random.sample(other_locations, known_quantity - 1)
+		)
 		
 	def get_local_corpse_ids(self, settlement):
 		biome_id = settlement.region.biome.id
@@ -1215,6 +1211,147 @@ class Game:
 			for animal_id, animal in self.animals.items()
 			if biome_id in animal["biomes"]
 		]	
+		
+	def tick_town_departure_timers(self):
+		player = getattr(self, "player", None)
+		if player is None or not player.is_location_local() or player.lz != 0:
+			return
+
+		settlement = self.get_settlement_by_coors(player.gx, player.gy)
+		if settlement is None:
+			return
+
+		for npc in settlement.npcs or []:
+			days = getattr(npc, "days_until_departure", None)
+			if npc.alive and days is not None and days > 0:
+				npc.days_until_departure = days - 1	
+		
+	def update_overworld_npcs(self):
+		for npc in list(getattr(self, "overworld_npcs", [])):
+			if npc.alive:
+				self.advance_migrant(npc)
+
+	def advance_migrant(self, npc):
+		known_towns = {}
+
+		for gx, gy in npc.memory.known_locations:
+			location = self.location_map[gy][gx]
+
+			if isinstance(location, Settlement) and location is not npc.previous_settlement:
+				known_towns[(gx, gy)] = location
+
+		position = (npc.gx, npc.gy)
+		target = getattr(npc, "tile_target", None)
+
+		if known_towns:
+			if target not in known_towns:
+				target = random.choice(list(known_towns))
+		elif target is None or target == position:
+			if self.world_size <= 1:
+				return
+
+			target = position
+			while target == position:
+				target = (
+					random.randrange(self.world_size),
+					random.randrange(self.world_size),
+				)
+
+		npc.tile_target = target
+
+		if position != target:
+			npc.gx = self.step_overworld_axis(npc.gx, target[0])
+			npc.gy = self.step_overworld_axis(npc.gy, target[1])
+			discovered = self.discover_nearby_locations(npc)
+
+			if self.debug_enabled:
+				discovery_text = ", ".join(
+					location.name for location in discovered
+				) or "none"
+
+				aidebug.write_log(
+					self,
+					"overworld_debug_log",
+					f"{self.calendar.date_string()} {self.calendar.time_string()} | "
+					f"{npc.full_name} traveling | "
+					f"position: {position} -> {(npc.gx, npc.gy)} | "
+					f"target: {target} | discovered: {discovery_text}",
+				)
+
+		if (npc.gx, npc.gy) == target and target in known_towns:
+			self.settle_migrant(npc, known_towns[target])
+
+	def step_overworld_axis(self, current, target):
+		forward = (target - current) % self.world_size
+		if forward == 0:
+			return current
+
+		if forward <= self.world_size - forward:
+			return (current + 1) % self.world_size
+
+		return (current - 1) % self.world_size
+
+	def settle_migrant(self, npc, settlement):
+		self.overworld_npcs.remove(npc)
+
+		npc.settlement = settlement
+		npc.tile_target = None
+		npc.days_until_departure = npc.migration_trait.roll_stay_length()
+
+		self.generate_settlement_npcs(settlement)
+		settlement.npcs.append(npc)
+		
+		if self.debug_enabled:
+			aidebug.write_log(
+				self,
+				"overworld_debug_log",
+				f"{self.calendar.date_string()} {self.calendar.time_string()} | "
+				f"{npc.full_name} arrived in {settlement.name} | "
+				f"position: {(npc.gx, npc.gy)} | "
+				f"days until departure: {npc.days_until_departure}",
+			)
+
+		player = getattr(self, "player", None)
+		town_map = getattr(self, "local_generator", None)
+
+		if (
+			player is not None
+			and player.is_location_local()
+			and player.lz == 0
+			and (player.gx, player.gy) == (settlement.gx, settlement.gy)
+			and isinstance(town_map, TownMapGenerator)
+			and town_map.settlement is settlement
+		):
+			self.place_arriving_npcs(town_map)
+
+	def place_arriving_npcs(self, town_map):
+		settlement = town_map.settlement
+		arrivals = [
+			npc for npc in settlement.npcs
+			if npc.alive and not npc.is_location_local()
+		]
+		if not arrivals:
+			return
+
+		occupied = {(npc.lx, npc.ly) for npc in settlement.npcs}
+
+		player = getattr(self, "player", None)
+		if player is not None:
+			occupied.add((player.lx, player.ly))
+
+		free_tiles = [
+			(x, y)
+			for y, row in enumerate(town_map.map_array)
+			for x, tile in enumerate(row)
+			if tile == TownForge.GROUND and (x, y) not in occupied
+		]
+		random.shuffle(free_tiles)
+
+		for npc, (x, y) in zip(arrivals, free_tiles):
+			npc.lx, npc.ly, npc.lz = x, y, 0
+
+			if npc not in self.entities:
+				self.entities.append(npc)	
 		
 class Entity:
 	def __init__(self):
@@ -1240,6 +1377,11 @@ class Creature(Entity):
 		super().__init__()
 		
 		self.memory = Memory()
+		
+		self.char = '@'
+		
+		self.sprite = None
+		self.sprite_palette = None
 		
 class Character(Creature):
 	def __init__(self, ancestry, race_objs, skills):
@@ -1312,6 +1454,8 @@ class Character(Creature):
 		
 		self.body_template_id = None
 		self.body_parts = {}
+		
+		self.personality_traits = []
 		
 	def set_full_name(self):
 		self.full_name = f"{self.first_name} {self.middle_name} {self.last_name}"
@@ -1806,6 +1950,10 @@ class NPC(Character):
 		self.char_color = "black"
 		
 		self.settlement = None
+		self.previous_settlement = None
+		
+		self.migration_trait = None
+		self.days_until_departure = None
 		
 		self.profession_id = None
 		self.profession = None
@@ -1813,7 +1961,14 @@ class NPC(Character):
 		
 		self.current_activity = None
 		
+		self.last_need_check = None
+		
+		self.handling_need = False
+		
 		self.actions = []
+		
+		self.tile_target = None
+		self.overworld_target = None
 
 #Map
 class Region:
@@ -2033,7 +2188,8 @@ class TownMapGenerator:
 			
 			self.buildings.append(building)
 			
-		self.game.generate_settlement_npcs(self.settlement, self)
+		self.game.generate_settlement_npcs(self.settlement)
+		self.game.place_arriving_npcs(self)
 		
 	def tile_color(self, x, y):
 		tile = self.map_array[y][x]
@@ -2204,9 +2360,13 @@ class Civilization:
 #Other
 class Memory:
 	def __init__(self):
-		self.known_locations = {}
+		self.known_locations = set()
 		
 		self.known_crafting_reactions = {}
+		
+class SpriteManager(Bite):
+	def __init__(self):
+		super().__init__()
 
 class Wallet:
 	def __init__(self, coins=None):
@@ -2341,6 +2501,10 @@ class Race:
 		self.character_name_systems = args[16]
 		
 		self.body_template = args[17]
+		
+		self.sprites = args[18]
+		
+		self.sprites_palettes = args[19]
 		
 	def get_name_system_id(self, name_system_type):
 		name_systems = getattr(self, f"{name_system_type}_name_systems")

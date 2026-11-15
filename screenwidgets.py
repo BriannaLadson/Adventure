@@ -904,23 +904,26 @@ class LocationsTab(Tab):
 	def populate(self):
 		player = self.player
 		scr_fr = self.scrollable_fr.scrolling_frame
-		
+
 		helpf.destroy_children_widgets(scr_fr)
-		
-		locations = list(player.memory.known_locations.values())
-		
+
+		locations = self.game.get_known_locations(player)
+
 		if self.sort_var.get() == "Name":
 			locations.sort(key=lambda location: location.name)
-			
+
 		elif self.sort_var.get() == "Distance":
 			locations.sort(
-				key=lambda location: abs(location.gx - player.gx) + abs(location.gy - player.gy)
+				key=lambda location: (
+					abs(location.gx - player.gx)
+					+ abs(location.gy - player.gy)
+				)
 			)
-			
+
 		for location in locations:
 			lbl = ttk.Label(
 				scr_fr,
-				text=f"{location.name} ({location.gx},{location.gy})"
+				text=f"{location.name} ({location.gx},{location.gy})",
 			)
 			lbl.pack(fill=X)
 			

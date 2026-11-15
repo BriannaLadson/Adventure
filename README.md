@@ -1,4 +1,4 @@
-# Adventure v0.23.0
+# Adventure v0.24.0
 
 Adventure is an open-world sandbox RPG simulation built using Python and Tkinter.
 
@@ -12,14 +12,14 @@ For more information on game systems, modding, and development, see the project 
 
 - Procedurally generated worlds, civilizations, settlements, and local maps
 - Persistent regions with biome-specific fauna, flora, minerals, trees, and water
-- Human, Dwarf, and Elf civilizations with distinct profession distributions
+- Human, Dwarf, Elf, and Goblin civilizations with distinct naming systems and profession distributions
 - Location discovery and cartography
 - Player-created maps with skill-based coordinate accuracy
 
 ### Characters & Progression
 
 - Tabbed character creation with identity, ancestry, skill potential, starting items, and role selection
-- Manual and procedural character naming, with Human, Dwarf, and Elf naming systems
+- Manual and procedural character naming, with Human, Dwarf, Elf, and Goblin naming systems
 - Mixed ancestry with ancestry-based needs and dietary compatibility
 - Skill XP, leveling, and configurable potential
 - Strength and Speed progression through movement
@@ -28,7 +28,12 @@ For more information on game systems, modding, and development, see the project 
 
 ### NPCs & AI
 
-- Persistent town NPCs generated from settlement demographics
+- Persistent town NPCs generated during world creation, with local positions assigned when the town map loads
+- Settler, Wanderer, and Nomad migration traits with stay lengths based on the world calendar
+- NPCs ready to migrate walk to the edge of the active town, then continue traveling across the overworld as time advances
+- Traveling NPCs discover nearby settlements and can settle in a new town, where they begin a fresh stay
+- JSON-defined NPC bitmap sprites and race-specific color palettes, with character symbols as a fallback
+- Town and overworld debug logs for inspecting NPC actions and migration
 - Profession-based work planning with queued actions
 - First, second, and third work-shift traits
 - Miners that collect ore and sell it at randomly selected shops
@@ -81,18 +86,18 @@ For more information on game systems, modding, and development, see the project 
 - Wait command (`.`) to advance one turn without moving
 - Data-driven systems designed for expansion and modding
 
-## What's New in v0.23.0
+## What's New in v0.24.0
 
-- Completed work AI for the current NPC professions. NPCs can earn money through gathering, crafting, trade, and coin minting. Their earnings depend on skill, material availability, and local prices.
-- Added paper maker work routines and species-specific parchment recipes. Cartographer NPCs can buy and use the new parchment variants to make maps.
-- Added wood burner, smelter, and blacksmith work routines. Wood burners make coal, smelters turn ore into bars, and blacksmiths use bars, coal, and wood to forge pickaxes for sale.
-- Added coinsmith work routines. Successfully minted coins go directly into the coinsmith's wallet.
-- Added water collector and forager work routines. Water collectors supply local markets with water, and foragers gather biome-specific fruit using the Foraging skill.
-- Removed water from background foraging, making water collectors the dedicated water-producing profession.
+- Added NPC migration. Settlers stay put, Wanderers remain in town for one calendar year, and Nomads roll a stay of one day up to the length of the shortest month. When their stay ends, NPCs in the active town can walk to the edge and depart.
+- Migrants travel across the overworld, discover nearby settlements, and can make a new town their home. A migrant can settle in a town founded by another race, and their new home persists across saves.
+- Town residents now exist from world creation, so even unvisited towns have individual NPCs.
+- Added Goblins, with civilization, settlement, and character names inspired by diplomacy, language, and cunning.
+- Added NPC bitmap sprites using Bite. Sprite grids and palettes are defined in JSON.
+- Added overworld migration logging for departures, travel, discoveries, and arrivals.
 
 ### Save Compatibility
 
-Start a new save for v0.23.0.
+Start a new world for v0.24.0. Saves from earlier versions are unsupported.
 
 ## Screenshots
 
@@ -145,7 +150,7 @@ pip install -r requirements.txt
 Or manually install dependencies:
 
 ```bash
-pip install terraforge-core cqcalendar dyecon numpy pillow noise tkinter-tooltip
+pip install terraforge-core cqcalendar dyecon numpy pillow noise tkinter-tooltip bite-core
 ```
 
 ## Running the Project
@@ -165,12 +170,14 @@ Current dependencies include:
 - pillow
 - noise
 - tkinter-tooltip
+- bite-core
 
 ## Libraries
 
 - [CQCalendar](https://github.com/BriannaLadson/CQCalendar): A customizable, tick-based time and calendar system for Python games and simulations.
 - [TerraForge](https://github.com/BriannaLadson/TerraForge): A versatile Python toolset for procedural map generation.
 - [DyEcon](https://github.com/BriannaLadson/DyEcon): A lightweight dynamic economy simulation library for Python games and simulations.
+- [Bite](https://github.com/BriannaLadson/Bite) — A Python library for defining, resizing, and recoloring 1-bit bitmap sprites.
 
 ## License
 

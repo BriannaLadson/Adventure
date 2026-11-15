@@ -1,3 +1,5 @@
+import random
+
 class Trait:
 	def __init__(self, name):
 		self.name = name
@@ -43,6 +45,27 @@ HANDEDNESS_TRAITS = [
 		preferred_hand_skill="right_hand",
 	),
 ]
+
+class MigrationTrait(Trait):
+	def __init__(self, name, min_days=None, max_days=None):
+		super().__init__(name)
+		
+		self.min_days = min_days
+		self.max_days = max_days
+		
+	def roll_stay_length(self):
+		if self.min_days is None:
+			return None
+			
+		return random.randint(self.min_days, self.max_days)
+		
+def build_migration_traits(days_per_year, shortest_month_days):
+	return [
+		MigrationTrait("Settler"),
+		MigrationTrait("Wanderer", days_per_year, days_per_year),
+		MigrationTrait("Nomad", 1, shortest_month_days),
+	]
+
 
 class WorkTrait(Trait):
 	def __init__(self, name, start_hour, end_hour):

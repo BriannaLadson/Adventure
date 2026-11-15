@@ -1,5 +1,4 @@
 import ai
-import entities
 
 def process_cmd(event, screen, cmd):
 	if not screen.can_process_input:
@@ -26,13 +25,7 @@ def process_cmd(event, screen, cmd):
 		
 		screen.update_screen()
 		
-		town_map = screen.tile_map.generator
-
-		if (
-			game.player.lx is not None
-			and isinstance(town_map, entities.TownMapGenerator)
-		):
-			ai.start_ai(game, town_map)
+		if ai.start_ai(game, screen.tile_map.generator):
 			screen.tile_map.update_map()
 		
 		building = screen.check_building_interaction()

@@ -5,6 +5,7 @@ from cqcalendar import CQCalendar
 import entities
 import itemtypes
 import professions
+import traits
 
 def load_data(game, data_path="data"):
 	for file in os.listdir(data_path):
@@ -55,10 +56,19 @@ def load_world_settings(game, data):
 	game.initial_production_cycles = data["initial_production_cycles"]
 
 def load_calendar(game, data):
+	months = data["calendar"]["months"]
+	
 	game.calendar = calendar = CQCalendar(
-		months = data["calendar"]["months"],
+		months = months,
 		weekdays = data["calendar"]["weekdays"],
 		debug_callbacks=True,
+	)
+	
+	month_lengths = [month["days"] for month in months]
+	
+	game.migration_traits = traits.build_migration_traits(
+		days_per_year = sum(month_lengths),
+		shortest_month_days = min(month_lengths),
 	)
 	
 	calendar.on_day(game.daily_update)
@@ -163,6 +173,9 @@ def load_name_systems(game, data):
 		
 	game.name_system_objs = name_system_objs
 	
+def load_palettes(game, data):
+	for palette_id, colors in data.items():
+		game.sprite_manager.add_palette(palette_id, **colors)
 	
 def load_races(game, data):
 	race_objs = {}
@@ -191,6 +204,8 @@ def load_races(game, data):
 			race_data["capital_buildings"],
 			race_data["character_name_systems"],
 			race_data["body_template"],
+			race_data["sprites"],
+			race_data["sprite_palettes"]
 		)
 				
 		race_objs[id] = race_obj
@@ -200,6 +215,10 @@ def load_races(game, data):
 def load_roles(game, data):
 	game.role_defs.update(data)
 	
+def load_sprites(game, data):
+	for sprite_id, structure in data.items():
+		game.sprite_manager.add_sprite(sprite_id, structure)	
+	
 PREFIX_LOADERS = {
 	"animals_": load_animals,
 	"bodytemplates_": load_body_templates,
@@ -207,6 +226,8 @@ PREFIX_LOADERS = {
 	"fruits_": load_fruits,
 	"metals_": load_metals,
 	"namesystems_": load_name_systems,
+	"palettes_": load_palettes,
 	"races_": load_races,
 	"roles_": load_roles,
+	"sprites_": load_sprites,
 }

@@ -1,0 +1,22 @@
+{
+	"orc_palette": {
+		"background": "",
+		"foreground": "#4C5A22"
+	},
+	"human_palette": {
+		"background": "",
+		"foreground": "#243B6B"
+	},
+	"elf_palette": {
+		"background": "",
+		"foreground": "#007C83"
+	},
+	"dwarf_palette": {
+		"background": "",
+		"foreground": "#9C4425"
+	},
+	"goblin_palette": {
+		"background": "",
+		"foreground": "#783B82"
+	}
+}

@@ -1,22 +1,148 @@
 import random
 
 import aidebug
+import entities
 
-def start_ai(game, town_map):
-	debug = aidebug.start_turn(game, town_map)
+#Helpers
+def should_address_need(npc, need_id):
+	current_value = npc.needs[need_id]
+	maximum_value = npc.need_definitions[need_id]["max"]
 
-	for npc in town_map.settlement.npcs or []:
-		if not npc.alive:
+	chance = 1 - (current_value / maximum_value)
+
+	return random.random() < chance
+
+#Start
+def start_ai(game, map_generator):
+	if not game.player.is_location_local():
+		return False
+		
+	if not isinstance(map_generator, entities.TownMapGenerator):
+		return False
+		
+	start_town_ai(game, map_generator)
+	
+	return True
+	
+def start_town_ai(game, town_map):
+	settlement = town_map.settlement
+
+	for npc in list(settlement.npcs or []):
+		if not npc.alive or not npc.is_location_local():
+			continue
+			
+		leave_town_goal = GOALS["leave_town"]
+
+		handling_need = need_ai(game, npc, town_map)
+		
+		leaving = (
+			not handling_need
+			and leave_town_goal.can_start(game, npc, town_map)
+		)
+
+		if leaving:
+			leave_town_goal.add_actions(game, npc, town_map)
+		
+		elif not handling_need:
+			work_ai(game, npc, town_map)
+			
+			if not npc.actions:
+				choose_goal(game, npc, town_map)
+
+		action_id = npc.actions[0][0] if npc.actions else "none"
+		position_before = (npc.lx, npc.ly)
+
+		do_ai(game, npc, town_map)
+
+		if game.debug_enabled:
+			aidebug.write_log(
+				game,
+				"town_debug_log",
+				f"{game.calendar.date_string()} {game.calendar.time_string()} | "
+				f"{settlement.name} | {npc.full_name} | "
+				f"action: {action_id} | "
+				f"position: {position_before} -> {(npc.lx, npc.ly)} | "
+				f"days until departure: {getattr(npc, 'days_until_departure', None)}",
+			)
+
+		if leaving and (npc.lx, npc.ly) == npc.tile_target:
+			move_npc_to_overworld(game, npc, settlement)
+			
 			continue
 
-		work_ai(game, npc, town_map)
-
 		if not npc.actions:
-			choose_goal(game, npc, town_map)
+			npc.handling_need = False
+	
+def move_npc_to_overworld(game, npc, settlement):
+	if not hasattr(game, "overworld_npcs"):
+		game.overworld_npcs = []
 
-		aidebug.run_action(debug, game, npc, town_map, do_ai)
-		
-	aidebug.finish_turn(debug)
+	settlement.npcs.remove(npc)
+	
+	if npc in game.entities:
+		game.entities.remove(npc)
+
+	npc.previous_settlement = settlement
+	npc.settlement = None
+	npc.gx, npc.gy = settlement.gx, settlement.gy
+	npc.lx = npc.ly = npc.lz = None
+	npc.tile_target = None
+	npc.actions.clear()
+	npc.current_activity = None
+	npc.handling_need = False
+
+	game.overworld_npcs.append(npc)
+	
+	if game.debug_enabled:
+		aidebug.write_log(
+			game,
+			"overworld_debug_log",
+			f"{game.calendar.date_string()} {game.calendar.time_string()} | "
+			f"{npc.full_name} departed {settlement.name} | "
+			f"overworld position: {(npc.gx, npc.gy)}",
+		)
+	
+def need_ai(game, npc, town_map):
+	if npc.handling_need and npc.actions:
+		return True
+
+	npc.handling_need = False
+
+	hour = (
+		game.calendar.date_string(),
+		game.calendar.hour,
+		game.calendar.is_pm,
+	)
+
+	if npc.last_need_check == hour:
+		return False
+
+	npc.last_need_check = hour
+
+	for need_id in npc.needs:
+		if not should_address_need(npc, need_id):
+			continue
+
+		available_goals = [
+			goal for goal in need_goals
+			if goal.can_start(game, npc, town_map, need_id)
+		]
+
+		if not available_goals:
+			continue
+
+		goal = random.choice(available_goals)
+
+		npc.actions.clear()
+		npc.current_activity = None
+
+		goal.add_actions(game, npc, town_map, need_id)
+
+		if npc.actions:
+			npc.handling_need = True
+			return True
+
+	return False
 		
 def work_ai(game, npc, town_map):
 	is_work_time = (
@@ -62,6 +188,120 @@ def do_ai(game, npc, town_map):
 	elif result:
 		npc.actions.pop(0)
 		npc.current_activity = None
+
+#AI Goals
+class BuyNeedItem:
+	def get_candidates(self, game, npc, town_map, need_id):
+		settlement = town_map.settlement
+		sub_economy = settlement.sub_economy
+
+		money = npc.wallet.get_quantity(settlement.currency)
+		candidates = []
+
+		for item_id, quantity in sub_economy.inventory.items():
+			if quantity <= 0:
+				continue
+
+			need_values = npc.get_item_need_values(item_id, game)
+
+			if need_values.get(need_id, 0) <= 0:
+				continue
+
+			price = sub_economy.get_value(item_id)
+
+			if price <= money:
+				candidates.append(item_id)
+
+		return candidates
+
+	def can_start(self, game, npc, town_map, need_id):
+		if not town_map.get_buildings(is_shop=True):
+			return False
+
+		return bool(self.get_candidates(game, npc, town_map, need_id))
+
+	def add_actions(self, game, npc, town_map, need_id):
+		shops = town_map.get_buildings(is_shop=True)
+		candidates = self.get_candidates(game, npc, town_map, need_id)
+
+		if not shops or not candidates:
+			return
+
+		shop = random.choice(shops)
+		item_id = random.choice(candidates)
+
+		npc.actions.extend([
+			("travel", shop),
+			("buy_material", (shop, item_id, 1)),
+			("consume", item_id),
+		])
+
+class ConsumeCarriedItem:
+	def can_start(self, game, npc, town_map, need_id):
+		return npc.find_item_for_need(need_id, game) is not None
+
+	def add_actions(self, game, npc, town_map, need_id):
+		item_id = npc.find_item_for_need(need_id, game)
+
+		npc.actions.append(("consume", item_id))
+
+class Idle:
+	def can_start(self, game, npc, town_map):
+		return True
+
+	def add_actions(self, game, npc, town_map):
+		npc.actions.append(("idle", None))
+		
+class LeaveTown:
+	def can_start(self, game, npc, town_map):
+		return getattr(npc, "days_until_departure", None) == 0
+
+	def add_actions(self, game, npc, town_map):
+		position = (npc.lx, npc.ly)
+		exit_tile = getattr(npc, "tile_target", None)
+		npc.actions.clear()
+		npc.current_activity = None
+
+		blocked = {
+			(other.lx, other.ly)
+			for other in town_map.settlement.npcs or []
+			if other is not npc
+		}
+		blocked.add((game.player.lx, game.player.ly))
+
+		if exit_tile is not None:
+			path = town_map.find_path(position, [exit_tile], blocked)
+			if path is not None:
+				if path:
+					npc.actions.append(("move", path[0]))
+				return
+
+		npc.tile_target = None
+		last = town_map.map_size - 1
+		edges = [
+			[(x, 0) for x in range(town_map.map_size)],
+			[(x, last) for x in range(town_map.map_size)],
+			[(0, y) for y in range(town_map.map_size)],
+			[(last, y) for y in range(town_map.map_size)],
+		]
+		random.shuffle(edges)
+
+		for edge in edges:
+			goals = [
+				(x, y) for x, y in edge
+				if (x, y) not in blocked and town_map.is_walkable(x, y)
+			]
+			if not goals:
+				continue
+
+			path = town_map.find_path(position, goals, blocked)
+			if path is None:
+				continue
+
+			npc.tile_target = path[-1] if path else position
+			if path:
+				npc.actions.append(("move", path[0]))
+			return
 		
 class Wander:
 	def can_start(self, game, npc, town_map):
@@ -77,15 +317,26 @@ class Wander:
 		target = (npc.lx + dx, npc.ly + dy)
 
 		npc.actions.append(("move", target))
-
-
-class Idle:
-	def can_start(self, game, npc, town_map):
-		return True
-
-	def add_actions(self, game, npc, town_map):
-		npc.actions.append(("idle", None))
 		
+GOALS = {
+	"wander": Wander(),
+	"idle": Idle(),
+	"leave_town": LeaveTown(),
+	"consume_carried_item": ConsumeCarriedItem(),
+	"buy_need_item": BuyNeedItem(),
+}
+
+ai_goals = [
+	GOALS["wander"],
+	GOALS["idle"],
+]
+
+need_goals = [
+	GOALS["consume_carried_item"],
+	GOALS["buy_need_item"],
+]
+
+#Actions		
 def move(game, npc, town_map, target):
 	tx, ty = target
 
@@ -361,7 +612,7 @@ def cut_tree(game, character, town_map, target):
 def make_map(game, character, town_map, location):
 	coordinates = (location.gx, location.gy)
 
-	if character.memory.known_locations.get(coordinates) is not location:
+	if coordinates not in character.memory.known_locations:
 		return None
 
 	parchment_id = next(
@@ -621,6 +872,12 @@ def forage(game, character, town_map, target):
 	character.current_activity["started"] = hour
 	return False
 	
+def consume(game, character, town_map, target):
+	if not character.consume_item(target, game):
+		return None
+
+	return True
+	
 action_dict = {
 	"move": move,
 	"idle": idle,
@@ -636,13 +893,8 @@ action_dict = {
 	"cut_tree": cut_tree,
 	"collect_water": collect_water,
 	"forage": forage,
+	"consume": consume,
 }
-
-
-ai_goals = [
-	Wander(),
-	Idle(),
-]
 
 def describe_action(action):
 	if action is None:

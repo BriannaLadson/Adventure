@@ -6,6 +6,7 @@ import helpfunctions as helpf
 import entities
 import dataparsing
 from screenwidgets import CharacterSheetNotebook, ScrollableFrame, ScrollableListbox
+import aidebug
 
 #Popups
 class Popup(Toplevel):
@@ -536,6 +537,8 @@ class MenuPopup(Popup):
 		root = self.root
 		game = root.game
 		
+		game.clear_debug_logs()
+	
 		helpf.save_data(game.save_path, "game", game)
 		
 		root.protocol("WM_DELETE_WINDOW", root.destroy)
@@ -978,7 +981,7 @@ class MapCraftingPopup(Popup):
 		).pack(fill=X)
 
 		locations = sorted(
-			self.player.memory.known_locations.values(),
+			self.game.get_known_locations(self.player),
 			key=lambda location: location.name,
 		)
 

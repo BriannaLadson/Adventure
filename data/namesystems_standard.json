@@ -793,5 +793,137 @@
 				"mun"
 			]
 		]
+	},
+	"goblin_civilization_names": {
+		"name": "Goblin Civilization Names",
+		"parts": [
+			["The"],
+			[
+				" Many-Tongued ",
+				" Far-Speaking ",
+				" Silver-Tongued ",
+				" Keen-Eared ",
+				" Quick-Witted ",
+				" Quiet ",
+				" Discreet ",
+				" Watchful ",
+				" Tactful ",
+				" Shrewd ",
+				" Level-Headed ",
+				" Open-Handed ",
+				" Fair-Spoken ",
+				" Clear-Spoken ",
+				" Careful ",
+				" Far-Sighted "
+			],
+			[
+				"Accord",
+				"League",
+				"Compact",
+				"Covenant",
+				"Concord",
+				"Council",
+				"Assembly",
+				"Conclave",
+				"Consortium",
+				"Coalition",
+				"Union",
+				"Confederation",
+				"Commonwealth",
+				"Fellowship",
+				"Society",
+				"Circle"
+			]
+		]
+	},
+	"goblin_settlement_names": {
+		"name": "Goblin Settlement Names",
+		"parts": [
+			[
+				"Parley",
+				"Pact",
+				"Accord",
+				"Oath",
+				"Truce",
+				"Treaty",
+				"Quill",
+				"Ink",
+				"Scribe",
+				"Seal",
+				"Word",
+				"Tongue",
+				"Whisper",
+				"Hush",
+				"Quiet",
+				"Keen",
+				"Fair",
+				"Clever",
+				"Open",
+				"Common"
+			],
+			[
+				"hall",
+				"bridge",
+				"court",
+				"gate",
+				"ford",
+				"cross",
+				"haven",
+				"port",
+				"market",
+				"ward",
+				"reach",
+				"rest",
+				"way",
+				"walk",
+				"seat",
+				"stead",
+				"watch",
+				"landing",
+				"side",
+				"meet"
+			]
+		]
+	},
+	"goblin_names": {
+		"name": "Goblin Names",
+		"parts": [
+			[
+				"Kuh",
+				"Klev",
+				"Sh",
+				"Tak",
+				"Dis",
+				"Diplow",
+				"En",
+				"Emi",
+				"Uh",
+				"Tree",
+				"Kom",
+				"Par",
+				"Leksi",
+				"Floo",
+				"Dya",
+				"Ret"
+			],
+			[
+				"ning",
+				"er",
+				"rood",
+				"tful",
+				"kreet",
+				"masee",
+				"voy",
+				"seree",
+				"kord",
+				"tee",
+				"pakt",
+				"lee",
+				"kon",
+				"ent",
+				"lekt",
+				"erik"
+			]
+		]
 	}
 }

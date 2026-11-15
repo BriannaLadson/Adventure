@@ -326,7 +326,7 @@ class Cartographer(Profession):
 			character.actions.extend(purchases)
 			return
 
-		locations = list(character.memory.known_locations.values())
+		locations = game.get_known_locations(character)
 
 		if not locations:
 			character.actions.append(("idle", None))

@@ -947,6 +947,9 @@ class TileMap(Canvas):
 		
 		self.tiles = []
 		
+		self.npc_images = {}
+		self.npc_image_size = None
+		
 		self.bind("<Configure>", self.update_map)
 		
 	def zoom_in(self, event=None):
@@ -1082,8 +1085,10 @@ class TileMap(Canvas):
 					if not (0 <= wx < self.generator.map_size and 0 <= wy < self.generator.map_size):
 						continue
 
-				location = self.player.memory.known_locations.get((wx, wy))
+				if (wx, wy) not in self.player.memory.known_locations:
+					continue
 
+				location = self.game.location_map[wy][wx]
 				if location is None:
 					continue
 
@@ -1254,8 +1259,19 @@ class TileMap(Canvas):
 		px, py = self.get_player_coords()
 
 		font_size = max(1, int(min(tile_width, tile_height) * 0.5))
+		
+		sprite_manager = self.game.sprite_manager
+		image_size = max(1, int(min(tile_width, tile_height)))
+		
+		if image_size != self.npc_image_size:
+			self.npc_images.clear()
+			
+			self.npc_image_size = image_size
 
 		for npc in settlement.npcs or []:
+			if not npc.alive or not npc.is_location_local():
+				continue
+			
 			if self.generator.get_building_by_door(npc.lx, npc.ly) is not None:
 				continue
 			
@@ -1267,6 +1283,39 @@ class TileMap(Canvas):
 
 			cx = (screen_x + 0.5) * tile_width
 			cy = (screen_y + 0.5) * tile_height
+			
+			sprite_id = getattr(npc, "sprite", None)
+			palette_id = getattr(npc, "sprite_palette", None)
+			
+			if (
+				sprite_manager is not None
+				and sprite_id in sprite_manager.sprites
+				and palette_id in sprite_manager.palettes
+			):
+				key = (sprite_id, palette_id)
+				
+				if key not in self.npc_images:
+					sprite = sprite_manager.get_sprite(sprite_id)
+					palette = sprite_manager.get_palette(palette_id)
+					
+					scale = image_size / max(sprite.width, sprite.height)
+					width = max(1, round(sprite.width * scale))
+					height = max(1, round(sprite.height * scale))
+					resized = sprite.resize(width, height)
+					
+					self.npc_images[key] = BitmapImage(
+						master=self,
+						data=resized.to_xbm(),
+						foreground=palette.foreground,
+						background=palette.background,
+					)
+					
+				self.create_image(
+					cx, cy,
+					image=self.npc_images[key],
+					tags="npc",
+				)
+				continue
 
 			self.create_text(
 				cx, cy,
