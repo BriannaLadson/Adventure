@@ -15,6 +15,8 @@ def process_cmd(event, screen, cmd):
 			screen.handle_player_death()
 			return
 			
+		screen.update_screen()
+			
 		low_needs = game.player.get_low_needs()
 		
 		if low_needs:
@@ -23,9 +25,7 @@ def process_cmd(event, screen, cmd):
 		
 		new_locations = screen.discover_locations()
 		
-		screen.update_screen()
-		
-		if ai.start_ai(game, screen.tile_map.generator):
+		if game.player.is_location_local():
 			screen.tile_map.update_map()
 		
 		building = screen.check_building_interaction()

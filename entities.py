@@ -118,7 +118,7 @@ class Game:
 		}
 		
 		self.debug_npc = None
-		self.debug_enabled = True
+		self.debug_enabled = False #Set to True to get overworld/town_map.txt
 		self.debug_profession_id = "brewer"
 
 		self.debug_action_limit = 5
@@ -143,18 +143,35 @@ class Game:
 		self.item_type_objs = itemtypes.ITEM_TYPES.copy()
 		
 	def inc_time(self, ticks=None):
+		import ai
+		
 		if ticks is None:
 			ticks = self.get_turn_ticks(self.player)
+			
+		if ticks <= 0:
+			return []
+			
+		local_map = self.get_active_local_map()	
+		calendar = self.calendar
+		dead_entities = []
 
-		old_hour = self.calendar.hour
-		old_is_pm = self.calendar.is_pm
-
-		self.calendar.update(ticks=ticks)
-
-		if old_hour != self.calendar.hour or old_is_pm != self.calendar.is_pm:
-			return self.hourly_update()
-
-		return []
+		for _ in range(ticks):
+			previous_hour = (calendar.hour, calendar.is_pm)
+			calendar.update(ticks=1)
+			
+			if (calendar.hour, calendar.is_pm) == previous_hour:
+				continue
+				
+			for entity in self.hourly_update():
+				if entity not in dead_entities:
+					dead_entities.append(entity)
+					
+			if self.player in dead_entities:
+				return dead_entities
+				
+		ai.start_ai(self, local_map)
+					
+		return dead_entities
 		
 	def clear_debug_logs(self):
 		self.town_debug_log = []
@@ -437,21 +454,33 @@ class Game:
 			self.run_settlement_production()
 			
 	def hourly_update(self):
+		import ai
+
+		local_map = self.get_active_local_map()
+		active_settlement = None
+
+		if isinstance(local_map, TownMapGenerator):
+			active_settlement = local_map.settlement
+
 		dead_entities = []
-		
+
 		for entity in self.entities:
+			if isinstance(entity, NPC):
+				if active_settlement is None or entity.settlement is not active_settlement:
+					continue
+
 			if hasattr(entity, "update_needs"):
 				entity.update_needs()
-				
+
 			if isinstance(entity, Player):
 				entity.auto_consume_items(self)
-				
-			if hasattr(entity, "is_dead"):
-				if entity.is_dead():
-					dead_entities.append(entity)
-					
+
+			if hasattr(entity, "is_dead") and entity.is_dead():
+				dead_entities.append(entity)
+
+		ai.run_offscreen_ai(self, active_settlement)
 		self.update_overworld_npcs()
-					
+
 		return dead_entities
 	
 	def get_discovered_locations_quantity(self, entity):
@@ -1213,18 +1242,12 @@ class Game:
 		]	
 		
 	def tick_town_departure_timers(self):
-		player = getattr(self, "player", None)
-		if player is None or not player.is_location_local() or player.lz != 0:
-			return
+		for settlement in self.settlements:
+			for npc in settlement.npcs or []:
+				days = npc.days_until_departure
 
-		settlement = self.get_settlement_by_coors(player.gx, player.gy)
-		if settlement is None:
-			return
-
-		for npc in settlement.npcs or []:
-			days = getattr(npc, "days_until_departure", None)
-			if npc.alive and days is not None and days > 0:
-				npc.days_until_departure = days - 1	
+				if npc.alive and days is not None and days > 0:
+					npc.days_until_departure = days - 1
 		
 	def update_overworld_npcs(self):
 		for npc in list(getattr(self, "overworld_npcs", [])):
@@ -1352,6 +1375,47 @@ class Game:
 
 			if npc not in self.entities:
 				self.entities.append(npc)	
+		
+	def get_active_local_map(self):
+		player = self.player
+		
+		if not player.is_location_local():
+			return None
+			
+		gx, gy, lz = player.gx, player.gy, player.lz
+		
+		map_key = (gx, gy, lz)
+		
+		generator = getattr(self, "local_generator", None)
+		if generator is not None and getattr(self, "local_map_key", None):
+			return generator
+			
+		location = self.location_map[gy][gx]
+		seed = gy * self.world_size + gx + 1
+		
+		if isinstance(location, Settlement):
+			generator = TownMapGenerator(
+				self,
+				location,
+				seed,
+				self.local_map_size,
+			)
+		
+		else:
+			biome_id = self.overworld_generator.get_biome(gx, gy)["id"]
+			biome = self.biome_objs[biome_id]
+			generator = LocalMapGenerator(biome, seed, self.local_map_size)
+
+		self.local_generator = generator
+		self.local_map_key = map_key
+
+		player.lx, player.ly = generator.get_nearest_walkable(
+			player.lx,
+			player.ly,
+		)
+
+		return generator
+		
 		
 class Entity:
 	def __init__(self):

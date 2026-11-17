@@ -102,6 +102,74 @@ def move_npc_to_overworld(game, npc, settlement):
 			f"overworld position: {(npc.gx, npc.gy)}",
 		)
 	
+def choose_offscreen_goals(game, npc, settlement):
+	for need_id in npc.needs:
+		if not should_address_need(npc, need_id):
+			continue
+
+		goals = [
+			goal for goal in need_goals
+			if goal.can_start_offscreen(
+				game, npc, settlement, need_id=need_id,
+			)
+		]
+		if goals:
+			return goals, need_id
+
+	leave_town = GOALS["leave_town"]
+	if leave_town.can_start_offscreen(game, npc, settlement):
+		return [leave_town], None
+		
+	run_offscreen_work(game, npc, settlement)
+
+	return [], None	
+	
+def run_offscreen_ai(game, active_settlement):
+	towns_updated = 0
+	goals_completed = 0
+
+	for settlement in game.settlements:
+		if settlement is active_settlement:
+			continue
+
+		residents = [npc for npc in settlement.npcs or [] if npc.alive]
+		if not residents:
+			continue
+
+		npc = random.choice(residents)
+		npc.update_needs()
+		towns_updated += 1
+
+		goals, need_id = choose_offscreen_goals(game, npc, settlement)
+
+		if goals:
+			goal = random.choice(goals)
+			completed = goal.run_offscreen_ai(
+				game, npc, settlement, need_id=need_id,
+			)
+		else:
+			completed = run_offscreen_work(game, npc, settlement)
+
+		if completed:
+			goals_completed += 1
+
+	if game.debug_enabled:
+		calendar = game.calendar
+		aidebug.write_log(
+			game,
+			"overworld_debug_log",
+			f"{calendar.date_string()} {calendar.time_string()} | "
+			f"offscreen tick | towns updated: {towns_updated} | "
+			f"goals completed: {goals_completed}",
+		)
+	
+def run_offscreen_work(game, npc, settlement):
+	profession = npc.profession
+	if profession is None or not npc.work_shift.is_active(game.calendar):
+		return False
+
+	return profession.run_offscreen_ai(game, npc, settlement)	
+	
 def need_ai(game, npc, town_map):
 	if npc.handling_need and npc.actions:
 		return True
@@ -190,11 +258,47 @@ def do_ai(game, npc, town_map):
 		npc.current_activity = None
 
 #AI Goals
-class BuyNeedItem:
-	def get_candidates(self, game, npc, town_map, need_id):
-		settlement = town_map.settlement
-		sub_economy = settlement.sub_economy
+class AIGoal:
+	offscreen_message = "completed an offscreen goal"
 
+	def can_start(self, game, npc, town_map, need_id=None):
+		return False
+
+	def add_actions(self, game, npc, town_map, need_id=None):
+		pass
+		
+	def can_start_offscreen(self, game, npc, settlement, *, need_id=None):
+		return False
+
+	def run_offscreen_ai(self, game, npc, settlement, *, need_id=None):
+		return False
+
+	def log_offscreen_result(self, game, npc, settlement, details=""):
+		if not game.debug_enabled:
+			return
+
+		calendar = game.calendar
+		message = (
+			f"{calendar.date_string()} {calendar.time_string()} | "
+			f"{settlement.name} | {npc.full_name} | "
+			f"{self.offscreen_message}"
+		)
+
+		if details:
+			message += f" | {details}"
+
+		aidebug.write_log(game, "overworld_debug_log", message)
+
+class BuyNeedItem(AIGoal):
+	offscreen_message = "bought an item to satisfy a need"
+	
+	def get_candidates(self, game, npc, town_map, need_id):
+		return self.get_candidates_in_settlement(
+			game, npc, town_map.settlement, need_id,
+		)
+
+	def get_candidates_in_settlement(self, game, npc, settlement, need_id):
+		sub_economy = settlement.sub_economy
 		money = npc.wallet.get_quantity(settlement.currency)
 		candidates = []
 
@@ -203,12 +307,10 @@ class BuyNeedItem:
 				continue
 
 			need_values = npc.get_item_need_values(item_id, game)
-
 			if need_values.get(need_id, 0) <= 0:
 				continue
 
 			price = sub_economy.get_value(item_id)
-
 			if price <= money:
 				candidates.append(item_id)
 
@@ -236,7 +338,35 @@ class BuyNeedItem:
 			("consume", item_id),
 		])
 
-class ConsumeCarriedItem:
+	def can_start_offscreen(self, game, npc, settlement, *, need_id=None):
+		if need_id is None or not settlement.has_building("market_building"):
+			return False
+
+		return bool(
+			self.get_candidates_in_settlement(game, npc, settlement, need_id)
+		)
+
+	def run_offscreen_ai(self, game, npc, settlement, *, need_id=None):
+		candidates = self.get_candidates_in_settlement(
+			game, npc, settlement, need_id,
+		)
+		if not candidates:
+			return False
+
+		item_id = random.choice(candidates)
+		if not game.buy_item(npc, settlement, item_id):
+			return False
+
+		consumed = npc.consume_item(item_id, game)
+		self.log_offscreen_result(
+			game, npc, settlement,
+			f"item: {item_id} | need: {need_id} | consumed: {consumed}",
+		)
+		return True
+
+class ConsumeCarriedItem(AIGoal):
+	offscreen_message = "consumed a carried item"
+	
 	def can_start(self, game, npc, town_map, need_id):
 		return npc.find_item_for_need(need_id, game) is not None
 
@@ -244,15 +374,41 @@ class ConsumeCarriedItem:
 		item_id = npc.find_item_for_need(need_id, game)
 
 		npc.actions.append(("consume", item_id))
+		
+	def can_start_offscreen(self, game, npc, settlement, *, need_id=None):
+		return (
+			need_id is not None
+			and npc.find_item_for_need(need_id, game) is not None
+		)
+		
+	def run_offscreen_ai(self, game, npc, settlement, *, need_id=None):
+		if need_id is None:
+			return False
 
-class Idle:
+		item_id = npc.find_item_for_need(need_id, game)
+		if item_id is None:
+			return False
+
+		if not npc.consume_item(item_id, game):
+			return False
+
+		self.log_offscreen_result(
+			game,
+			npc,
+			settlement,
+			f"item: {item_id} | need: {need_id} | "
+			f"remaining need value: {npc.needs[need_id]}",
+		)
+		return True
+
+class Idle(AIGoal):
 	def can_start(self, game, npc, town_map):
 		return True
 
 	def add_actions(self, game, npc, town_map):
 		npc.actions.append(("idle", None))
 		
-class LeaveTown:
+class LeaveTown(AIGoal):
 	def can_start(self, game, npc, town_map):
 		return getattr(npc, "days_until_departure", None) == 0
 
@@ -302,8 +458,15 @@ class LeaveTown:
 			if path:
 				npc.actions.append(("move", path[0]))
 			return
+			
+	def can_start_offscreen(self, game, npc, settlement, *, need_id=None):
+		return npc.days_until_departure == 0
+
+	def run_offscreen_ai(self, game, npc, settlement, *, need_id=None):
+		move_npc_to_overworld(game, npc, settlement)
+		return True
 		
-class Wander:
+class Wander(AIGoal):
 	def can_start(self, game, npc, town_map):
 		return True
 
@@ -526,52 +689,33 @@ def buy(game, character, town_map, target):
 		
 		
 def hunt(game, character, town_map, target):
-	corpse_ids = game.get_local_corpse_ids(town_map.settlement)
+	settlement = town_map.settlement
+	corpse_ids = game.get_local_corpse_ids(settlement)
 	if not corpse_ids:
 		return None
 
-	hour = (
-		game.calendar.date_string(),
-		game.calendar.hour,
-		game.calendar.is_pm,
-	)
+	calendar = game.calendar
+	hour = (calendar.date_string(), calendar.hour, calendar.is_pm)
 
 	if character.current_activity is None:
 		character.current_activity = {
 			"id": "hunting",
 			"started": hour,
 		}
-
 		return False
 
 	if character.current_activity["started"] == hour:
 		return False
 
-	fauna = town_map.settlement.region.resources["fauna"]
-	hunting_level = character.get_skill_lvl("hunting")
-
-	hunting_chance = min(
-		100,
-		max(0, (fauna + hunting_level) / 2),
+	corpse_id = game.profession_objs["hunter"].attempt_hunt(
+		game, character, settlement, corpse_ids,
 	)
 
-	success = random.uniform(0, 100) < hunting_chance
-
-	if success:
-		success = character.add_carried_object(
-			random.choice(corpse_ids),
-			game,
-			quantity=1,
-		)
-
-	character.gain_skill_xp("hunting")
-
-	if success:
+	if corpse_id is not None:
 		return True
 
 	character.current_activity["started"] = hour
-
-	return False	
+	return False
 
 def cut_tree(game, character, town_map, target):
 	trees = town_map.settlement.resources["trees"]

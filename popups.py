@@ -502,6 +502,9 @@ class DeathPopup(Popup):
 		if player in game.entities:
 			game.entities.remove(player)
 			
+		game.local_generator = None
+		game.local_map_key = None
+			
 		if hasattr(root, "play_screen"):
 			root.play_screen.destroy()
 		

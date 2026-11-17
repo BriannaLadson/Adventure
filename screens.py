@@ -373,11 +373,6 @@ class PlayScreen(Screen):
 			return
 			
 		generator, map_type = self.get_current_map_data()
-		
-		if map_type == "local":
-			player.lx, player.ly = generator.get_nearest_walkable(
-				player.lx, player.ly,
-			)
 			
 		self.tile_map.tiles = []
 		self.tile_map.generator = generator
@@ -468,30 +463,12 @@ class PlayScreen(Screen):
 		
 	def get_current_map_data(self):
 		game = self.game
-		player = self.player
-		
-		if player.lx is None:
+		local_map = game.get_active_local_map()
+
+		if local_map is None:
 			return game.overworld_generator, "overworld"
-			
-		location = game.location_map[player.gy][player.gx]
-		seed = player.gy * game.world_size + player.gx + 1
-		
-		if isinstance(location, entities.Settlement):
-			generator = entities.TownMapGenerator(
-				game,
-				location,
-				seed,
-				game.local_map_size,
-			)
-			
-		else:
-			biome_id = game.overworld_generator.get_biome(player.gx, player.gy)["id"]
-			biome = game.biome_objs[biome_id]
-			generator = entities.LocalMapGenerator(biome, seed, game.local_map_size)
-			
-		game.local_generator = generator
-		
-		return generator, "local"
+
+		return local_map, "local"
 		
 	def pickup_item(self, first_inventory, second_inventory, first_inv_text, second_inv_text):
 		root = self.root

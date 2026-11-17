@@ -1,6 +1,7 @@
 import random
 
 import items
+import aidebug
 
 class Profession:
 	def __init__(self):
@@ -144,6 +145,9 @@ class Profession:
 					reaction.id
 				] = reaction
 		
+	def run_offscreen_ai(self, game, npc, settlement):
+		return False	
+		
 class CustomProfession(Profession):
 	def __init__(self, *args):
 		super().__init__()
@@ -208,7 +212,55 @@ class Hunter(Profession):
 		else:
 			character.actions.append(("idle", None))
 		
-	
+	def attempt_hunt(self, game, character, settlement, corpse_ids):
+		fauna = settlement.region.resources["fauna"]
+		hunting_level = character.get_skill_lvl("hunting")
+		hunting_chance = min(100, max(0, (fauna + hunting_level) / 2))
+
+		corpse_id = None
+
+		if random.uniform(0, 100) < hunting_chance:
+			item_id = random.choice(corpse_ids)
+			if character.add_carried_object(item_id, game, quantity=1):
+				corpse_id = item_id
+
+		character.gain_skill_xp("hunting")
+		return corpse_id
+
+	def run_offscreen_ai(self, game, npc, settlement):
+		for item_id, item_type in game.item_type_objs.items():
+			if item_id != "animal_corpse" and item_type.type_id != "animal_corpse":
+				continue
+
+			if not npc.inventory.has_item(item_id):
+				continue
+
+			if not settlement.has_building("market_building"):
+				return False
+
+			if not game.sell_item(npc, settlement, item_id):
+				return False
+
+			result = f"sold carcass: {item_id}"
+			break
+		else:
+			corpse_ids = game.get_local_corpse_ids(settlement)
+			if not corpse_ids:
+				return False
+
+			corpse_id = self.attempt_hunt(game, npc, settlement, corpse_ids)
+			result = f"hunted: {corpse_id}" if corpse_id else "hunt unsuccessful"
+
+		if game.debug_enabled:
+			calendar = game.calendar
+			aidebug.write_log(
+				game,
+				"overworld_debug_log",
+				f"{calendar.date_string()} {calendar.time_string()} | "
+				f"{settlement.name} | {npc.full_name} | Hunter | {result}",
+			)
+
+		return True
 		
 class Cartographer(Profession):
 	def __init__(self):
