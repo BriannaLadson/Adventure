@@ -1,4 +1,4 @@
-# Adventure v0.24.0
+# Adventure v0.25.0
 
 Adventure is an open-world sandbox RPG simulation built using Python and Tkinter.
 
@@ -47,7 +47,8 @@ For more information on game systems, modding, and development, see the project 
 - Hunters that catch biome-specific game and sell carcasses at local markets
 - Butchers and tanners that buy materials, select matching recipes, and sell finished products
 - Tree cutters that harvest wood using regional tree abundance and Wood Cutting skill, then sell it at local markets
-- Work routines for all current NPC professions
+- Local and offscreen work routines for all 15 NPC professions
+- Migrants can work, buy necessities, and restock supplies in their destination towns
 - Paper makers, wood burners, smelters, and blacksmiths that craft goods, sell them at local markets, and buy materials when supplies are available and affordable
 - Coinsmiths that mint coins and keep the proceeds in their wallets
 - Water collectors and foragers that gather local resources and sell them at market
@@ -59,7 +60,7 @@ For more information on game systems, modding, and development, see the project 
 - Dynamic pricing, supply and demand, production chains, and settlement inventories
 - Markets and banks with unlimited transaction funding, independent of town treasuries
 - Civilization-specific currencies and multi-currency wallets
-- Currency exchange with procedurally generated fees
+- Player and NPC currency exchange with bank-specific fees, including offscreen NPC exchanges
 - Checking accounts with minimum opening deposits, deposits, withdrawals, and account closure
 - Market category filtering and scrollable Buy/Sell lists
 
@@ -86,18 +87,18 @@ For more information on game systems, modding, and development, see the project 
 - Wait command (`.`) to advance one turn without moving
 - Data-driven systems designed for expansion and modding
 
-## What's New in v0.24.0
+## What's New in v0.25.0
 
-- Added NPC migration. Settlers stay put, Wanderers remain in town for one calendar year, and Nomads roll a stay of one day up to the length of the shortest month. When their stay ends, NPCs in the active town can walk to the edge and depart.
-- Migrants travel across the overworld, discover nearby settlements, and can make a new town their home. A migrant can settle in a town founded by another race, and their new home persists across saves.
-- Town residents now exist from world creation, so even unvisited towns have individual NPCs.
-- Added Goblins, with civilization, settlement, and character names inspired by diplomacy, language, and cunning.
-- Added NPC bitmap sprites using Bite. Sprite grids and palettes are defined in JSON.
-- Added overworld migration logging for departures, travel, discoveries, and arrivals.
+- All 15 NPC professions now run in offscreen settlements. NPCs can gather resources, craft goods, sell products, and restock supplies according to their profession.
+- Migrants can resume work and trade after settling in a new town.
+- NPCs can exchange foreign coins for local currency at banks during their free time. In the active town, they walk to the bank. In offscreen towns, they can exchange coins during an offscreen update. Both use the local bank's exchange fee.
+- Fixed duplicate town AI updates during player mining sessions.
+- Migration now tracks an NPC's previous settlement by overworld coordinates, reducing the links between town objects in saved worlds.
+- A temporarily unwritable debug log no longer interrupts the simulation.
 
 ### Save Compatibility
 
-Start a new world for v0.24.0. Saves from earlier versions are unsupported.
+Start a new world for v0.25.0. Saves from earlier versions are unsupported.
 
 ## Screenshots
 

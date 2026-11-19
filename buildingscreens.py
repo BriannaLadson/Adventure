@@ -4,7 +4,6 @@ import random
 
 from screenwidgets import CustomNotebook, Tab
 from popups import Popup
-import ai
 
 #BankPopup
 class BankPopup(Popup):
@@ -580,8 +579,6 @@ class MinePopup(Popup):
 
 		if not ore_ids:
 			return
-			
-		town_map = self.play_screen.tile_map.generator
 
 		for _ in range(hours):
 			if self.player.ensure_equipped(
@@ -606,8 +603,6 @@ class MinePopup(Popup):
 					self.play_screen.update_screen()
 					self.play_screen.handle_player_death()
 					return
-					
-				ai.start_ai(self.game, town_map)
 
 			self.game.mine(self.player, self.settlement)
 			

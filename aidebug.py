@@ -8,11 +8,13 @@ DEBUG_PATHS = {
 
 def write_log(game, buffer_name, message):
 	path = DEBUG_PATHS[buffer_name]
-
-	with path.open("a", encoding="utf-8") as log:
-		log.write(message + "\n")
-
 	getattr(game, buffer_name).append(message)
+
+	try:
+		with path.open("a", encoding="utf-8") as log:
+			log.write(message + "\n")
+	except PermissionError:
+		return
 
 
 def clear_logs(game):

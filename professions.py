@@ -146,7 +146,126 @@ class Profession:
 				] = reaction
 		
 	def run_offscreen_ai(self, game, npc, settlement):
-		return False	
+		return False
+		
+	def log_offscreen_result(self, game, npc, settlement, result):
+		if not game.debug_enabled:
+			return
+
+		calendar = game.calendar
+		aidebug.write_log(
+			game,
+			"overworld_debug_log",
+			f"{calendar.date_string()} {calendar.time_string()} | "
+			f"{settlement.name} | {npc.full_name} | {self.name} | {result}",
+		)
+		
+	def run_offscreen_hide_crafting(
+		self, game, npc, settlement, *, skill_id, product_name,
+	):
+		has_market = settlement.has_building("market_building")
+
+		if has_market:
+			for reaction in self.crafting_reactions:
+				product_id = next(iter(reaction.products))
+				if not npc.inventory.has_item(product_id):
+					continue
+
+				if game.sell_item(npc, settlement, product_id):
+					self.log_offscreen_result(
+						game, npc, settlement,
+						f"sold {product_name}: {product_id}",
+					)
+					return True
+
+		if skill_id not in npc.skills:
+			return False
+
+		known_reactions = npc.memory.known_crafting_reactions
+		reactions = [
+			reaction
+			for reaction in self.crafting_reactions
+			if reaction.id in known_reactions
+		]
+
+		for reaction in reactions:
+			# Each recipe uses one type of hide.
+			hide_id, quantity = next(iter(reaction.reagents.items()))
+			if not npc.remove_carried_object(hide_id, game, quantity):
+				continue
+
+			level = npc.get_skill_lvl(skill_id)
+			chance = min(100, max(0, level))
+			success = random.randint(1, 100) <= chance
+			npc.gain_skill_xp(skill_id)
+
+			if success:
+				product_id, amount = next(iter(reaction.products.items()))
+				npc.add_carried_object(product_id, game, amount)
+				result = f"made {product_name}: {hide_id} -> {product_id}"
+			else:
+				result = f"{product_name} crafting failed: {hide_id}"
+
+			self.log_offscreen_result(game, npc, settlement, result)
+			return True
+
+		if not has_market:
+			return False
+
+		market = settlement.sub_economy
+		budget = npc.wallet.get_quantity(settlement.currency)
+
+		for reaction in reactions:
+			hide_id, quantity = next(iter(reaction.reagents.items()))
+			if not market.has_item(hide_id, quantity):
+				continue
+
+			if market.get_value(hide_id) * quantity > budget:
+				continue
+
+			if game.buy_item(npc, settlement, hide_id, quantity):
+				self.log_offscreen_result(
+					game, npc, settlement, f"bought hide: {hide_id}",
+				)
+				return True
+
+		return False		
+		
+	def buy_offscreen_ingredient(self, game, npc, settlement, reactions, *, label):
+		market = settlement.sub_economy
+		budget = npc.wallet.get_quantity(settlement.currency)
+		candidates = []
+
+		for reaction in reactions:
+			missing = {}
+			for item_id, quantity in reaction.reagents.items():
+				shortage = quantity - npc.get_unequipped_quantity(item_id)
+				if shortage > 0:
+					missing[item_id] = shortage
+
+			if not missing or not all(
+				market.has_item(item_id, quantity)
+				for item_id, quantity in missing.items()
+			):
+				continue
+
+			cost = sum(
+				market.get_value(item_id) * quantity
+				for item_id, quantity in missing.items()
+			)
+			if cost <= budget:
+				candidates.append((cost, missing))
+
+		if not candidates:
+			return None
+
+		_, missing = min(candidates, key=lambda candidate: candidate[0])
+		item_id, quantity = next(iter(missing.items()))
+
+		if not game.buy_item(npc, settlement, item_id, quantity):
+			return None
+
+		return f"bought {label}: {quantity} {item_id}"	
 		
 class CustomProfession(Profession):
 	def __init__(self, *args):
@@ -251,15 +370,8 @@ class Hunter(Profession):
 			corpse_id = self.attempt_hunt(game, npc, settlement, corpse_ids)
 			result = f"hunted: {corpse_id}" if corpse_id else "hunt unsuccessful"
 
-		if game.debug_enabled:
-			calendar = game.calendar
-			aidebug.write_log(
-				game,
-				"overworld_debug_log",
-				f"{calendar.date_string()} {calendar.time_string()} | "
-				f"{settlement.name} | {npc.full_name} | Hunter | {result}",
-			)
-
+		self.log_offscreen_result(game, npc, settlement, result)
+		
 		return True
 		
 class Cartographer(Profession):
@@ -396,6 +508,86 @@ class Cartographer(Profession):
 			or getattr(item_type, "type_id", None) == "parchment"
 		]
 		
+	def run_offscreen_ai(self, game, npc, settlement):
+		map_id = next(
+			(
+				item_id
+				for item_id, quantity in npc.inventory.get_items()
+				if quantity > 0
+				and isinstance(game.item_type_objs.get(item_id), items.Map)
+			),
+			None,
+		)
+
+		if map_id is not None:
+			if not settlement.has_building("market_building"):
+				return False
+
+			if not game.sell_item(npc, settlement, map_id):
+				return False
+
+			result = f"sold map: {map_id}"
+
+		else:
+			locations = game.get_known_locations(npc)
+			if not locations:
+				return False
+
+			parchment_id = game.find_carried_parchment(npc)
+
+			if not npc.inventory.has_item("ink"):
+				result = self.buy_offscreen_supply(
+					game, npc, settlement, ["ink"],
+				)
+			elif parchment_id is None:
+				result = self.buy_offscreen_supply(
+					game, npc, settlement, self.get_parchment_ids(game),
+				)
+			else:
+				location = random.choice(locations)
+
+				npc.remove_carried_object("ink", game, quantity=1)
+				npc.remove_carried_object(parchment_id, game, quantity=1)
+
+				map_item = game.create_map(
+					location=location,
+					creator=npc.full_name.strip() or "None",
+					cartography_lvl=npc.get_skill_lvl("cartography"),
+				)
+
+				npc.add_carried_object(map_item.id, game, quantity=1)
+				npc.gain_skill_xp("cartography")
+				result = f"made map of {location.name}: {map_item.id}"
+
+		if result is None:
+			return False
+
+		self.log_offscreen_result(game, npc, settlement, result)
+
+		return True
+
+	def buy_offscreen_supply(self, game, npc, settlement, candidates):
+		if not settlement.has_building("market_building"):
+			return None
+
+		market = settlement.sub_economy
+		budget = npc.wallet.get_quantity(settlement.currency)
+		affordable = [
+			item_id
+			for item_id in candidates
+			if market.has_item(item_id, 1)
+			and market.get_value(item_id) <= budget
+		]
+
+		if not affordable:
+			return None
+
+		item_id = min(affordable, key=market.get_value)
+		if game.buy_item(npc, settlement, item_id):
+			return f"bought supply: {item_id}"
+
+		return None	
+		
 class Butcher(Profession):
 	def __init__(self):
 		super().__init__()
@@ -490,7 +682,82 @@ class Butcher(Profession):
 					return
 
 		character.actions.append(("idle", None))
-				
+		
+	def run_offscreen_ai(self, game, npc, settlement):
+		has_market = settlement.has_building("market_building")
+		result = None
+
+		if has_market:
+			for item_id, quantity in npc.inventory.get_items():
+				if quantity <= 0:
+					continue
+
+				item_type = game.item_type_objs.get(item_id)
+				if (
+					item_id not in self.outputs
+					and getattr(item_type, "type_id", None) not in self.outputs
+				):
+					continue
+
+				if game.sell_item(npc, settlement, item_id):
+					result = f"sold butcher product: {item_id}"
+					break
+
+		if result is None:
+			for reaction in self.crafting_reactions:
+				if reaction.id not in npc.memory.known_crafting_reactions:
+					continue
+
+				if reaction.skill not in npc.skills:
+					continue
+
+				# Each butcher recipe uses a single corpse type.
+				corpse_id, quantity = next(iter(reaction.reagents.items()))
+				if not npc.remove_carried_object(corpse_id, game, quantity):
+					continue
+
+				level = npc.get_skill_lvl(reaction.skill)
+				chance = min(100, max(0, level))
+				success = random.randint(1, 100) <= chance
+				npc.gain_skill_xp(reaction.skill)
+
+				if success:
+					for item_id, amount in reaction.products.items():
+						if amount > 0:
+							npc.add_carried_object(item_id, game, amount)
+					result = f"butchered carcass: {corpse_id}"
+				else:
+					result = f"butchering failed: {corpse_id}"
+
+				break
+
+		if result is None and has_market:
+			market = settlement.sub_economy
+			budget = npc.wallet.get_quantity(settlement.currency)
+
+			for reaction in self.crafting_reactions:
+				if reaction.id not in npc.memory.known_crafting_reactions:
+					continue
+
+				if reaction.skill not in npc.skills:
+					continue
+
+				corpse_id, quantity = next(iter(reaction.reagents.items()))
+				if (
+					market.has_item(corpse_id, quantity)
+					and market.get_value(corpse_id) * quantity <= budget
+					and game.buy_item(npc, settlement, corpse_id, quantity)
+				):
+					result = f"bought carcass: {corpse_id}"
+					break
+
+		if result is None:
+			return False
+
+		self.log_offscreen_result(game, npc, settlement, result)
+
+		return True
+		
 class Brewer(Profession):
 	def __init__(self):
 		super().__init__()
@@ -639,6 +906,81 @@ class Brewer(Profession):
 
 		character.actions.append(("craft", reaction.id))
 		
+	def run_offscreen_ai(self, game, npc, settlement):
+		reactions = [
+			reaction
+			for reaction in npc.memory.known_crafting_reactions.values()
+			if reaction.skill == "brewing"
+		]
+		if not reactions or "brewing" not in npc.skills:
+			return False
+
+		has_market = settlement.has_building("market_building")
+		wine_ids = {
+			item_id
+			for reaction in game.wine_reaction_objs.values()
+			for item_id in reaction.products
+		}
+		wine_id = next(
+			(
+				item_id
+				for item_id, quantity in npc.inventory.get_items()
+				if quantity > 0 and item_id in wine_ids
+			),
+			None,
+		)
+
+		if wine_id is not None:
+			if not has_market or not game.sell_item(npc, settlement, wine_id):
+				return False
+
+			self.log_offscreen_result(
+				game, npc, settlement, f"sold wine: {wine_id}",
+			)
+			return True
+
+		ready_reactions = [
+			reaction
+			for reaction in reactions
+			if all(
+				npc.get_unequipped_quantity(item_id) >= quantity
+				for item_id, quantity in reaction.reagents.items()
+			)
+		]
+
+		if not ready_reactions:
+			if not has_market:
+				return False
+
+			result = self.buy_offscreen_ingredient(
+				game, npc, settlement, reactions,
+				label="brewing ingredient",
+			)
+			if result is None:
+				return False
+
+			self.log_offscreen_result(game, npc, settlement, result)
+			return True
+
+		reaction = random.choice(ready_reactions)
+		for item_id, quantity in reaction.reagents.items():
+			npc.remove_carried_object(item_id, game, quantity)
+
+		chance = min(100, max(0, npc.get_skill_lvl("brewing")))
+		success = random.randint(1, 100) <= chance
+		npc.gain_skill_xp("brewing")
+
+		if success:
+			for item_id, quantity in reaction.products.items():
+				if quantity > 0:
+					npc.add_carried_object(item_id, game, quantity)
+			result = f"brewed wine: {', '.join(reaction.products)}"
+		else:
+			result = f"brewing failed: {reaction.id}"
+
+		self.log_offscreen_result(game, npc, settlement, result)
+		return True
+		
 class InkMaker(Profession):
 	def __init__(self):
 		super().__init__()
@@ -724,6 +1066,51 @@ class InkMaker(Profession):
 
 		character.actions.append(("craft", reaction.id))
 		
+	def run_offscreen_ai(self, game, npc, settlement):
+		has_market = settlement.has_building("market_building")
+
+		if npc.inventory.has_item("ink"):
+			if not has_market or not game.sell_item(npc, settlement, "ink"):
+				return False
+
+			result = "sold ink"
+
+		else:
+			reaction = npc.memory.known_crafting_reactions.get("make_ink")
+			if reaction is None or reaction.skill not in npc.skills:
+				return False
+
+			coal_needed = reaction.reagents["coal"]
+			coal_missing = coal_needed - npc.get_unequipped_quantity("coal")
+
+			if coal_missing > 0:
+				if not has_market:
+					return False
+
+				if not game.buy_item(npc, settlement, "coal", coal_missing):
+					return False
+
+				result = f"bought coal: {coal_missing}"
+
+			else:
+				if not npc.remove_carried_object("coal", game, coal_needed):
+					return False
+
+				level = npc.get_skill_lvl(reaction.skill)
+				chance = min(100, max(0, level))
+				success = random.randint(1, 100) <= chance
+				npc.gain_skill_xp(reaction.skill)
+
+				if success:
+					ink_quantity = reaction.products["ink"]
+					npc.add_carried_object("ink", game, ink_quantity)
+					result = f"made ink: {ink_quantity}"
+				else:
+					result = "ink making failed"
+
+		self.log_offscreen_result(game, npc, settlement, result)
+		return True	
+		
 class Tanner(Profession):
 	def __init__(self):
 		super().__init__()
@@ -786,6 +1173,13 @@ class Tanner(Profession):
 
 		character.actions.append(("idle", None))
 		
+	def run_offscreen_ai(self, game, npc, settlement):
+		return self.run_offscreen_hide_crafting(
+			game, npc, settlement,
+			skill_id="tanning",
+			product_name="leather",
+		)
+		
 class TreeCutter(Profession):
 	def __init__(self):
 		super().__init__()
@@ -829,6 +1223,34 @@ class TreeCutter(Profession):
 			character.actions.append(("cut_tree", None))
 		else:
 			character.actions.append(("idle", None))
+		
+	def run_offscreen_ai(self, game, npc, settlement):
+		if npc.inventory.has_item("wood"):
+			if not settlement.has_building("market_building"):
+				return False
+
+			if not game.sell_item(npc, settlement, "wood"):
+				return False
+
+			result = "sold wood"
+
+		else:
+			trees = settlement.resources["trees"]
+			if trees <= 0:
+				return False
+
+			level = npc.get_skill_lvl("wood_cutting")
+			chance = min(100, max(0, (trees + level) / 2))
+
+			success = random.uniform(0, 100) < chance
+			if success:
+				success = npc.add_carried_object("wood", game, quantity=1)
+
+			npc.gain_skill_xp("wood_cutting")
+			result = "harvested wood" if success else "woodcutting failed"
+
+		self.log_offscreen_result(game, npc, settlement, result)
+		return True	
 		
 class PaperMaker(Profession):
 	def __init__(self):
@@ -898,6 +1320,13 @@ class PaperMaker(Profession):
 
 		character.actions.append(("idle", None))
 		
+	def run_offscreen_ai(self, game, npc, settlement):
+		return self.run_offscreen_hide_crafting(
+			game, npc, settlement,
+			skill_id="paper_making",
+			product_name="parchment",
+		)	
+		
 class WoodBurner(Profession):
 	def __init__(self):
 		super().__init__()
@@ -955,6 +1384,51 @@ class WoodBurner(Profession):
 			return
 
 		character.actions.append(("idle", None))
+		
+	def run_offscreen_ai(self, game, npc, settlement):
+		has_market = settlement.has_building("market_building")
+
+		if has_market and npc.inventory.has_item("coal"):
+			if not game.sell_item(npc, settlement, "coal"):
+				return False
+
+			result = "sold coal"
+
+		else:
+			reaction = npc.memory.known_crafting_reactions.get("make_coal")
+			if reaction is None or reaction.skill not in npc.skills:
+				return False
+
+			wood_needed = reaction.reagents["wood"]
+			wood_missing = wood_needed - npc.get_unequipped_quantity("wood")
+
+			if wood_missing > 0:
+				if not has_market:
+					return False
+
+				if not game.buy_item(npc, settlement, "wood", wood_missing):
+					return False
+
+				result = f"bought wood: {wood_missing}"
+
+			else:
+				if not npc.remove_carried_object("wood", game, wood_needed):
+					return False
+
+				level = npc.get_skill_lvl(reaction.skill)
+				chance = min(100, max(0, level))
+				success = random.randint(1, 100) <= chance
+				npc.gain_skill_xp(reaction.skill)
+
+				if success:
+					coal_quantity = reaction.products["coal"]
+					npc.add_carried_object("coal", game, coal_quantity)
+					result = f"made coal: {coal_quantity}"
+				else:
+					result = "wood burning failed"
+
+		self.log_offscreen_result(game, npc, settlement, result)
+		return True	
 		
 class Miner(Profession):
 	def __init__(self):
@@ -1041,7 +1515,67 @@ class Miner(Profession):
 				("travel", mine_building),
 				("mine", None),
 			])
-			
+		
+	def run_offscreen_ai(self, game, npc, settlement):
+		has_market = settlement.has_building("market_building")
+		ore_id = npc.find_inventory_item(game, game.ore_objs)
+
+		if ore_id is not None:
+			if not has_market or not game.sell_item(npc, settlement, ore_id):
+				return False
+
+			result = f"sold ore: {ore_id}"
+
+		else:
+			pickaxe_id = npc.find_inventory_item(game, game.pickaxe_objs)
+
+			if pickaxe_id is None:
+				if not has_market:
+					return False
+
+				market = settlement.sub_economy
+				budget = npc.wallet.get_quantity(settlement.currency)
+				candidates = []
+
+				for item_id, quantity in market.inventory.items():
+					if quantity <= 0:
+						continue
+
+					item = game.item_type_objs.get(item_id)
+					if getattr(item, "type_id", None) != "pickaxe":
+						continue
+
+					if getattr(item, "durability", 1) <= 0:
+						continue
+
+					if market.get_value(item_id) <= budget:
+						candidates.append(item_id)
+
+				if not candidates:
+					return False
+
+				pickaxe_id = random.choice(candidates)
+				if not game.buy_item(npc, settlement, pickaxe_id):
+					return False
+
+				result = f"bought pickaxe: {pickaxe_id}"
+
+			else:
+				if not game.ore_objs or not settlement.has_building("mine_building"):
+					return False
+
+				if npc.ensure_equipped(game, game.pickaxe_objs) is None:
+					return False
+
+				if game.mine(npc, settlement):
+					ore_id = npc.find_inventory_item(game, game.ore_objs)
+					result = f"mined ore: {ore_id}"
+				else:
+					result = "mining failed"
+
+		self.log_offscreen_result(game, npc, settlement, result)
+		return True
+		
 class Smelter(Profession):
 	def __init__(self):
 		super().__init__()
@@ -1172,6 +1706,66 @@ class Smelter(Profession):
 				quantity=quantity * 5,
 			)
 		
+	def run_offscreen_ai(self, game, npc, settlement):
+		has_market = settlement.has_building("market_building")
+		bar_id = npc.find_inventory_item(game, game.bar_objs)
+
+		if has_market and bar_id is not None:
+			if not game.sell_item(npc, settlement, bar_id):
+				return False
+
+			self.log_offscreen_result(
+				game, npc, settlement, f"sold bar: {bar_id}",
+			)
+			return True
+
+		if "smelting" not in npc.skills:
+			return False
+
+		known_reactions = npc.memory.known_crafting_reactions
+		reactions = [
+			reaction
+			for reaction in self.crafting_reactions
+			if reaction.id in known_reactions
+		]
+
+		for reaction in reactions:
+			if not all(
+				npc.get_unequipped_quantity(item_id) >= quantity
+				for item_id, quantity in reaction.reagents.items()
+			):
+				continue
+
+			for item_id, quantity in reaction.reagents.items():
+				npc.remove_carried_object(item_id, game, quantity)
+
+			level = npc.get_skill_lvl("smelting")
+			chance = min(100, max(0, level))
+			success = random.randint(1, 100) <= chance
+			npc.gain_skill_xp("smelting")
+
+			if success:
+				bar_id, quantity = next(iter(reaction.products.items()))
+				npc.add_carried_object(bar_id, game, quantity)
+				result = f"smelted bar: {bar_id}"
+			else:
+				result = f"smelting failed: {reaction.id}"
+
+			self.log_offscreen_result(game, npc, settlement, result)
+			return True
+
+		if not has_market:
+			return False
+
+		result = self.buy_offscreen_ingredient(
+			game, npc, settlement, reactions, label="smelting reagent",
+		)
+		if result is None:
+			return False
+
+		self.log_offscreen_result(game, npc, settlement, result)
+		return True	
+		
 class Coinsmith(Profession):
 	def __init__(self):
 		super().__init__()
@@ -1287,7 +1881,55 @@ class Coinsmith(Profession):
 				return
 
 		character.actions.append(("idle", None))				
-					
+		
+	def run_offscreen_ai(self, game, npc, settlement):
+		if "coinsmithing" not in npc.skills:
+			return False
+
+		reactions = [
+			reaction
+			for reaction in npc.memory.known_crafting_reactions.values()
+			if reaction.skill == "coinsmithing"
+		]
+
+		for reaction in reactions:
+			if not all(
+				npc.get_unequipped_quantity(item_id) >= quantity
+				for item_id, quantity in reaction.reagents.items()
+			):
+				continue
+
+			for item_id, quantity in reaction.reagents.items():
+				npc.remove_carried_object(item_id, game, quantity)
+
+			level = npc.get_skill_lvl("coinsmithing")
+			chance = min(100, max(0, level))
+			success = random.randint(1, 100) <= chance
+			npc.gain_skill_xp("coinsmithing")
+
+			if success:
+				coin_id, quantity = next(iter(reaction.products.items()))
+				npc.add_carried_object(coin_id, game, quantity)
+				result = f"minted coin: {quantity} {coin_id}"
+			else:
+				result = f"coinsmithing failed: {reaction.id}"
+
+			self.log_offscreen_result(game, npc, settlement, result)
+			return True
+
+		if not settlement.has_building("market_building"):
+			return False
+
+		result = self.buy_offscreen_ingredient(
+			game, npc, settlement, reactions,
+			label="coinsmithing reagent",
+		)
+		if result is None:
+			return False
+
+		self.log_offscreen_result(game, npc, settlement, result)
+		return True
+		
 class WaterCollector(Profession):
 	def __init__(self):
 		super().__init__()
@@ -1330,6 +1972,30 @@ class WaterCollector(Profession):
 			character.actions.append(("collect_water", None))
 		else:
 			character.actions.append(("idle", None))
+		
+	def run_offscreen_ai(self, game, npc, settlement):
+		if npc.inventory.has_item("water"):
+			if not settlement.has_building("market_building"):
+				return False
+
+			if not game.sell_item(npc, settlement, "water"):
+				return False
+
+			result = "sold water"
+
+		else:
+			water = settlement.resources["water"]
+			if water <= 0:
+				return False
+
+			success = random.randint(1, 100) <= water
+			if success:
+				success = npc.add_carried_object("water", game, quantity=1)
+
+			result = "collected water" if success else "water collection failed"
+
+		self.log_offscreen_result(game, npc, settlement, result)
+		return True	
 		
 class Forager(Profession):
 	def __init__(self):
@@ -1392,6 +2058,40 @@ class Forager(Profession):
 			character.actions.append(("forage", None))
 		else:
 			character.actions.append(("idle", None))
+			
+	def run_offscreen_ai(self, game, npc, settlement):
+		for item_id, quantity in npc.inventory.get_items():
+			fruit = game.fruit_objs.get(item_id)
+			if quantity <= 0 or fruit is None or not fruit.can_forage:
+				continue
+
+			if not settlement.has_building("market_building"):
+				return False
+
+			if not game.sell_item(npc, settlement, item_id):
+				return False
+
+			self.log_offscreen_result(
+				game, npc, settlement, f"sold fruit: {item_id}",
+			)
+			return True
+
+		fruit_ids = self.get_local_fruit_ids(settlement, game)
+		if not fruit_ids:
+			return False
+
+		flora = settlement.resources["flora"]
+		if flora <= 0:
+			return False
+
+		result = "foraging failed"
+		if random.randint(1, 100) <= flora:
+			fruit_id = random.choice(fruit_ids)
+			if npc.add_carried_object(fruit_id, game, quantity=1):
+				result = f"foraged fruit: {fruit_id}"
+
+		self.log_offscreen_result(game, npc, settlement, result)
+		return True
 	
 class Blacksmith(Profession):
 	def __init__(self):
@@ -1477,6 +2177,64 @@ class Blacksmith(Profession):
 				return
 
 		character.actions.append(("idle", None))
+	
+	def run_offscreen_ai(self, game, npc, settlement):
+		has_market = settlement.has_building("market_building")
+
+		if has_market:
+			pickaxe_id = npc.find_inventory_item(game, game.pickaxe_objs)
+			if pickaxe_id is not None:
+				if not game.sell_item(npc, settlement, pickaxe_id):
+					return False
+
+				self.log_offscreen_result(
+					game, npc, settlement, f"sold pickaxe: {pickaxe_id}",
+				)
+				return True
+
+		if "blacksmithing" not in npc.skills:
+			return False
+
+		reactions = self.get_known_recipes(npc)
+
+		for reaction in reactions:
+			if not all(
+				npc.get_unequipped_quantity(item_id) >= quantity
+				for item_id, quantity in reaction.reagents.items()
+			):
+				continue
+
+			for item_id, quantity in reaction.reagents.items():
+				npc.remove_carried_object(item_id, game, quantity)
+
+			level = npc.get_skill_lvl("blacksmithing")
+			chance = min(100, max(0, level))
+			success = random.randint(1, 100) <= chance
+			npc.gain_skill_xp("blacksmithing")
+
+			if success:
+				for item_id, quantity in reaction.products.items():
+					if quantity > 0:
+						npc.add_carried_object(item_id, game, quantity)
+				result = f"forged: {', '.join(reaction.products)}"
+			else:
+				result = f"blacksmithing failed: {reaction.id}"
+
+			self.log_offscreen_result(game, npc, settlement, result)
+			return True
+
+		if not has_market:
+			return False
+
+		result = self.buy_offscreen_ingredient(
+			game, npc, settlement, reactions,
+			label="blacksmithing reagent",
+		)
+		if result is None:
+			return False
+
+		self.log_offscreen_result(game, npc, settlement, result)
+		return True
 	
 PROFESSIONS = {
 	"hunter": Hunter(),

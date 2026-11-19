@@ -82,7 +82,7 @@ def move_npc_to_overworld(game, npc, settlement):
 	if npc in game.entities:
 		game.entities.remove(npc)
 
-	npc.previous_settlement = settlement
+	npc.previous_settlement_coords = (settlement.gx, settlement.gy)
 	npc.settlement = None
 	npc.gx, npc.gy = settlement.gx, settlement.gy
 	npc.lx = npc.ly = npc.lz = None
@@ -119,10 +119,15 @@ def choose_offscreen_goals(game, npc, settlement):
 	leave_town = GOALS["leave_town"]
 	if leave_town.can_start_offscreen(game, npc, settlement):
 		return [leave_town], None
-		
-	run_offscreen_work(game, npc, settlement)
 
-	return [], None	
+	if npc.profession is not None and npc.work_shift.is_active(game.calendar):
+		return [], None
+
+	play_goals = [
+		goal for goal in ai_goals
+		if goal.can_start_offscreen(game, npc, settlement)
+	]
+	return play_goals, None	
 	
 def run_offscreen_ai(game, active_settlement):
 	towns_updated = 0
@@ -217,11 +222,17 @@ def work_ai(game, npc, town_map):
 		npc.profession is not None
 		and npc.work_shift.is_active(game.calendar)
 	)
+	exchanging = bool(npc.actions) and npc.actions[-1][0] == "exchange_currency"
 
 	if not is_work_time:
+		if not exchanging:
+			npc.actions.clear()
+			npc.current_activity = None
+		return
+
+	if exchanging:
 		npc.actions.clear()
 		npc.current_activity = None
-		return
 
 	if not npc.actions:
 		npc.profession.add_work_ai(game, npc, town_map)
@@ -401,6 +412,76 @@ class ConsumeCarriedItem(AIGoal):
 		)
 		return True
 
+class ExchangeCurrency(AIGoal):
+	offscreen_message = "completed an offscreen currency exchange"
+	
+	def get_exchange_candidates(self, game, npc, bank):
+		local_coin = bank.get_currency()
+		if local_coin not in game.coin_objs:
+			return []
+
+		candidates = []
+		for coin_id, quantity in npc.wallet.get_coins():
+			if quantity <= 0 or coin_id == local_coin or coin_id not in game.coin_objs:
+				continue
+
+			quote = bank.get_exchange_quote(game, coin_id, quantity)
+			if quote is not None and quote[2] > 0:
+				candidates.append((coin_id, quantity))
+
+		return candidates
+
+	def can_start(self, game, npc, town_map):
+		bank = town_map.settlement.bank
+		return (
+			bank is not None
+			and bool(town_map.get_buildings(building_type="bank_building"))
+			and bool(self.get_exchange_candidates(game, npc, bank))
+		)
+
+	def add_actions(self, game, npc, town_map):
+		bank = town_map.settlement.bank
+		buildings = town_map.get_buildings(building_type="bank_building")
+		candidates = self.get_exchange_candidates(game, npc, bank)
+		coin_id, _ = random.choice(candidates)
+		building = random.choice(buildings)
+
+		npc.actions.extend([
+			("travel", building),
+			("exchange_currency", (building, coin_id)),
+		])
+
+	def can_start_offscreen(self, game, npc, settlement, *, need_id=None):
+		bank = settlement.bank
+		return (
+			bank is not None
+			and settlement.has_building("bank_building")
+			and bool(self.get_exchange_candidates(game, npc, bank))
+		)
+
+	def run_offscreen_ai(self, game, npc, settlement, *, need_id=None):
+		bank = settlement.bank
+		if bank is None or not settlement.has_building("bank_building"):
+			return False
+
+		candidates = self.get_exchange_candidates(game, npc, bank)
+		if not candidates:
+			return False
+
+		coin_id, quantity = random.choice(candidates)
+		local_coin = bank.get_currency()
+		local_before = npc.wallet.get_quantity(local_coin)
+
+		if not bank.exchange_currency(game, npc, coin_id, quantity):
+			return False
+
+		received = npc.wallet.get_quantity(local_coin) - local_before
+		self.log_offscreen_result(
+			game, npc, settlement,
+			f"exchanged {quantity} {coin_id} for {received} {local_coin}",
+		)
+		return True
+
 class Idle(AIGoal):
 	def can_start(self, game, npc, town_map):
 		return True
@@ -482,6 +563,7 @@ class Wander(AIGoal):
 		npc.actions.append(("move", target))
 		
 GOALS = {
+	"exchange_currency": ExchangeCurrency(),
 	"wander": Wander(),
 	"idle": Idle(),
 	"leave_town": LeaveTown(),
@@ -492,6 +574,7 @@ GOALS = {
 ai_goals = [
 	GOALS["wander"],
 	GOALS["idle"],
+	GOALS["exchange_currency"],
 ]
 
 need_goals = [
@@ -499,7 +582,40 @@ need_goals = [
 	GOALS["buy_need_item"],
 ]
 
-#Actions		
+#Actions
+def exchange_currency(game, npc, town_map, target):
+	building, coin_id = target
+	settlement = town_map.settlement
+	bank = settlement.bank
+
+	if bank is None or (npc.lx, npc.ly) not in town_map.get_building_positions(building):
+		return None
+
+	quantity = npc.wallet.get_quantity(coin_id)
+	local_coin = bank.get_currency()
+	local_before = npc.wallet.get_quantity(local_coin) if local_coin else 0
+	success = bank.exchange_currency(game, npc, coin_id, quantity)
+
+	if game.debug_enabled:
+		if success:
+			received = npc.wallet.get_quantity(local_coin) - local_before
+			result = f"exchanged {quantity} {coin_id} for {received} {local_coin}"
+		else:
+			result = f"exchange failed: {quantity} {coin_id}"
+
+		calendar = game.calendar
+		aidebug.write_log(
+			game,
+			"town_debug_log",
+			f"{calendar.date_string()} {calendar.time_string()} | "
+			f"{settlement.name} | {npc.full_name} | {result}",
+		)
+
+	return True
+	
+def idle(game, npc, town_map, target):
+	return True	
+	
 def move(game, npc, town_map, target):
 	tx, ty = target
 
@@ -524,10 +640,6 @@ def move(game, npc, town_map, target):
 	npc.lx = tx
 	npc.ly = ty
 
-	return True
-
-
-def idle(game, npc, town_map, target):
 	return True
 	
 def travel(game, character, town_map, building):
@@ -1023,6 +1135,7 @@ def consume(game, character, town_map, target):
 	return True
 	
 action_dict = {
+	"exchange_currency": exchange_currency,
 	"move": move,
 	"idle": idle,
 	"travel": travel,

@@ -66,7 +66,6 @@ class Game:
 		
 		self.pickaxe_objs = {}
 
-		
 		self.profession_objs = professions.PROFESSIONS
 		
 		self.item_type_objs = itemtypes.ITEM_TYPES.copy()
@@ -1258,9 +1257,11 @@ class Game:
 		known_towns = {}
 
 		for gx, gy in npc.memory.known_locations:
-			location = self.location_map[gy][gx]
+			if (gx, gy) == npc.previous_settlement_coords:
+				continue
 
-			if isinstance(location, Settlement) and location is not npc.previous_settlement:
+			location = self.location_map[gy][gx]
+			if isinstance(location, Settlement):
 				known_towns[(gx, gy)] = location
 
 		position = (npc.gx, npc.gy)
@@ -1387,7 +1388,7 @@ class Game:
 		map_key = (gx, gy, lz)
 		
 		generator = getattr(self, "local_generator", None)
-		if generator is not None and getattr(self, "local_map_key", None):
+		if generator is not None and getattr(self, "local_map_key", None) == map_key:
 			return generator
 			
 		location = self.location_map[gy][gx]
@@ -2014,7 +2015,7 @@ class NPC(Character):
 		self.char_color = "black"
 		
 		self.settlement = None
-		self.previous_settlement = None
+		self.previous_settlement_coords = None
 		
 		self.migration_trait = None
 		self.days_until_departure = None

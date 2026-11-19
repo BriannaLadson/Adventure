@@ -25,6 +25,9 @@ def process_cmd(event, screen, cmd):
 		
 		new_locations = screen.discover_locations()
 		
+		if new_locations or game.player.is_location_local():
+			screen.tile_map.update_map()
+		
 		if game.player.is_location_local():
 			screen.tile_map.update_map()
 		
